@@ -35,7 +35,7 @@ interface ErrorLike {
 export function requestCodeError(error: ErrorLike): string {
   if (error.status === 429) return 'Muitas tentativas. Aguarde alguns minutos e tente de novo.';
   // The allowlist trigger aborts account creation, which Supabase reports as a database error.
-  if (error.status === 500 || /database error/i.test(error.message)) {
+  if (/database error/i.test(error.message)) {
     return 'Este email não está cadastrado. Peça a um admin para cadastrar você.';
   }
   return `Não foi possível enviar o código: ${error.message}`;

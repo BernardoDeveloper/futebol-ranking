@@ -105,6 +105,10 @@ describe('error messages', () => {
     expect(requestCodeError({ message: 'boom', status: 400 })).toMatch(/boom/);
   });
 
+  it('requestCodeError does not blame registration for an unrelated server failure', () => {
+    expect(requestCodeError({ message: 'Error sending magic link email', status: 500 })).not.toMatch(/cadastrado/);
+  });
+
   it('addPlayerError explains duplicates and missing permission', () => {
     expect(addPlayerError({ message: '', code: '23505' })).toMatch(/Já existe/);
     expect(addPlayerError({ message: '', code: '42501' })).toMatch(/Só admins/);

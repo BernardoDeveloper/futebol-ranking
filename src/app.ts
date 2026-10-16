@@ -86,7 +86,13 @@ export function mountApp(root: HTMLElement, api: Api, config: Config): void {
     }
   }
 
+  // Supabase re-announces the same session on token refresh and whenever the tab
+  // regains focus; rebuilding then would throw away the open tab and unsaved input.
+  let shown: string | null | undefined;
   api.onSessionChange((email) => {
-    void render(email);
+    const normalized = email?.toLowerCase() ?? null;
+    if (normalized === shown) return;
+    shown = normalized;
+    void render(normalized);
   });
 }

@@ -41,6 +41,18 @@ describe('mountApp', () => {
     expect(tabs(root)).toEqual(['Ranking', 'Avaliar', 'Jogadores']);
   });
 
+  it('keeps the open tab when Supabase re-announces the same session', async () => {
+    const { root, api, signIn } = mount([admin, bruno]);
+    signIn('bruno@acme.com');
+    await settle();
+    [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')].find((t) => t.textContent === 'Avaliar')?.click();
+    await settle();
+    signIn('bruno@acme.com');
+    await settle();
+    expect(root.querySelector('h2')?.textContent).toBe('Avaliar');
+    expect(api.players).toHaveBeenCalledTimes(2); // shell once, ratings tab once
+  });
+
   it('R1.6 "Sair" ends the session and returns to the login', async () => {
     const { root, api, signIn } = mount([admin]);
     signIn('ana@acme.com');

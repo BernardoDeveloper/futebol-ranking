@@ -24,7 +24,7 @@
 
 ## 4 · Review fixes
 
-- [ ] 4.1 (TDD) Key identity on the confirmed auth account, reject password accounts, make player email immutable, stop admins removing themselves — R1.5, R1.7, R2.5, R2.6
+- [x] 4.1 (TDD) Key identity on the confirmed auth account, reject password accounts, make player email immutable, stop admins removing themselves — R1.5, R1.7, R2.5, R2.6
   _Reason security review findings_
-- [ ] 4.2 (Unit) Render the app only when the session email changes, map only database errors to "not registered", state the unrated copy line — R1.1, R1.2, R4.2
+- [x] 4.2 (Unit) Render the app only when the session email changes, map only database errors to "not registered", state the unrated copy line — R1.1, R1.2, R4.2
   _Reason code review findings_

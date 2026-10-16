@@ -4,7 +4,7 @@
 
 create table public.players (
   id uuid primary key default gen_random_uuid(),
-  name text not null check (length(trim(name)) > 0),
+  name text not null check (length(trim(name)) > 0 and name !~ '[\r\n]'),
   email text not null unique check (email = lower(trim(email)) and email like '%_@_%'),
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
@@ -21,22 +21,28 @@ create table public.ratings (
 
 create index ratings_rated_id_idx on public.ratings (rated_id);
 
--- Identity: the email claim of the session's JWT, mapped to a player.
+-- Identity: the session's auth account, once its email is confirmed, mapped to a player
+-- by that account's email. The JWT's email claim alone is not trusted.
 
 create function public.current_player_id() returns uuid
 language sql stable security definer set search_path = '' as $$
-  select p.id from public.players p where p.email = lower(auth.jwt() ->> 'email')
+  select p.id
+  from auth.users u
+  join public.players p on p.email = lower(u.email)
+  where u.id = auth.uid() and u.email_confirmed_at is not null
 $$;
 
 create function public.is_admin() returns boolean
 language sql stable security definer set search_path = '' as $$
   select coalesce(
-    (select p.is_admin from public.players p where p.email = lower(auth.jwt() ->> 'email')),
+    (select p.is_admin from public.players p where p.id = public.current_player_id()),
     false
   )
 $$;
 
--- Allowlist: no auth account, and so no access code, for an email that is not a player.
+-- Allowlist: no auth account, and so no access code, for an email that is not a player;
+-- and no password on any account, so nobody can pre-create a player's account with a
+-- password of their own and sign in with it later.
 
 create function public.enforce_player_allowlist() returns trigger
 language plpgsql security definer set search_path = '' as $$
@@ -45,13 +51,34 @@ begin
     raise exception 'email % is not a registered player', new.email
       using errcode = 'insufficient_privilege';
   end if;
+  if coalesce(new.encrypted_password, '') <> '' then
+    raise exception 'accounts sign in by access code only'
+      using errcode = 'insufficient_privilege';
+  end if;
   return new;
 end
 $$;
 
 create trigger enforce_player_allowlist
-  before insert or update of email on auth.users
+  before insert or update of email, encrypted_password on auth.users
   for each row execute function public.enforce_player_allowlist();
+
+-- A player's email is their identity: changing it would let whoever owns the new inbox
+-- log in as that player. A wrong email is fixed by removing and registering again.
+
+create function public.keep_player_email() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if new.email is distinct from old.email then
+    raise exception 'a player''s email cannot be changed' using errcode = 'insufficient_privilege';
+  end if;
+  return new;
+end
+$$;
+
+create trigger keep_player_email
+  before update of email on public.players
+  for each row execute function public.keep_player_email();
 
 create function public.touch_rating() returns trigger
 language plpgsql set search_path = '' as $$
@@ -77,7 +104,7 @@ create policy players_insert on public.players
 create policy players_update on public.players
   for update to authenticated using (public.is_admin()) with check (public.is_admin());
 create policy players_delete on public.players
-  for delete to authenticated using (public.is_admin());
+  for delete to authenticated using (public.is_admin() and id <> public.current_player_id());
 
 create policy ratings_select on public.ratings
   for select to authenticated using (rater_id = public.current_player_id());
@@ -108,9 +135,10 @@ $$;
 revoke all on public.players, public.ratings from anon, public;
 revoke execute on function
   public.current_player_id(), public.is_admin(), public.ranking(),
-  public.enforce_player_allowlist(), public.touch_rating()
+  public.enforce_player_allowlist(), public.touch_rating(), public.keep_player_email()
   from anon, public;
-revoke execute on function public.enforce_player_allowlist(), public.touch_rating()
+revoke execute on function
+  public.enforce_player_allowlist(), public.touch_rating(), public.keep_player_email()
   from authenticated;
 grant select, insert, update, delete on public.players, public.ratings to authenticated;
 grant execute on function public.current_player_id(), public.is_admin(), public.ranking()
