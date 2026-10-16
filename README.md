@@ -37,8 +37,8 @@ salva nota no nome de outro nem vê as notas individuais dos outros — só as m
    Brevo, Gmail…). O envio embutido do Supabase permite poucos emails por hora, e o time
    inteiro entrando antes do jogo estoura esse limite.
 7. **Authentication → Sign In / Providers**: deixe só **Email** ligado, com *Confirm
-   email* ativo, e desligue os demais provedores e o login anônimo. O banco já recusa
-   contas com senha e só reconhece emails confirmados, mas não há por que deixar portas
+   email* ativo, e desligue os demais provedores e o login anônimo. O banco já descarta
+   senhas e só reconhece emails confirmados, mas não há por que deixar portas
    abertas.
 8. **Recomendado**: em *Email OTP Expiration* use 600 segundos (10 min) e, se alguém
    começar a abusar do envio de códigos, ligue o captcha em **Authentication → Attack

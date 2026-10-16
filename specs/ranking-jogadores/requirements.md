@@ -21,7 +21,7 @@ in another player's name.
 - **R1.4** Where an allowed email domain is configured, the app shall accept only the part before the `@` and append that domain.
 - **R1.5** If an authenticated session's account has no confirmed email belonging to a registered player, then the backend shall return no player, rating, or ranking data to it.
 - **R1.6** When the player signs out, the app shall end the session.
-- **R1.7** If an account is created or changed to have a password, then the backend shall reject it, so the access code is the only way in.
+- **R1.7** If an account is created or changed with a password, then the backend shall discard the password, so the access code is the only way in.
 
 ## R2 · Players
 
@@ -29,7 +29,7 @@ in another player's name.
 - **R2.2** While the authenticated player is an admin, the app shall let them remove a player, together with every rating given or received by that player.
 - **R2.3** If a player who is not an admin attempts to create, change, or remove a player, then the backend shall reject the operation.
 - **R2.4** If an admin registers an email that already belongs to a player, then the backend shall reject it.
-- **R2.5** If anyone attempts to change a registered player's email, then the backend shall reject it; a wrong email is fixed by removing and registering the player again.
+- **R2.5** If anyone attempts to change a registered player's email or id, then the backend shall reject it; a wrong email is fixed by removing and registering the player again.
 - **R2.6** If an admin attempts to remove themselves, then the backend shall leave the player in place.
 
 ## R3 · Ratings

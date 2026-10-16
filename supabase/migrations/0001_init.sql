@@ -4,7 +4,7 @@
 
 create table public.players (
   id uuid primary key default gen_random_uuid(),
-  name text not null check (length(trim(name)) > 0 and name !~ '[\r\n]'),
+  name text not null check (length(trim(name)) > 0 and name !~ '[\r\n\u2028\u2029]'),
   email text not null unique check (email = lower(trim(email)) and email like '%_@_%'),
   is_admin boolean not null default false,
   created_at timestamptz not null default now()
@@ -40,9 +40,10 @@ language sql stable security definer set search_path = '' as $$
   )
 $$;
 
--- Allowlist: no auth account, and so no access code, for an email that is not a player;
--- and no password on any account, so nobody can pre-create a player's account with a
--- password of their own and sign in with it later.
+-- Allowlist: no auth account, and so no access code, for an email that is not a player.
+-- Passwords are discarded, never refused: GoTrue's access-code signup writes a random
+-- temporary one, and discarding stops anyone pre-creating a player's account with a
+-- password of their own to sign in with later.
 
 create function public.enforce_player_allowlist() returns trigger
 language plpgsql security definer set search_path = '' as $$
@@ -51,10 +52,7 @@ begin
     raise exception 'email % is not a registered player', new.email
       using errcode = 'insufficient_privilege';
   end if;
-  if coalesce(new.encrypted_password, '') <> '' then
-    raise exception 'accounts sign in by access code only'
-      using errcode = 'insufficient_privilege';
-  end if;
+  new.encrypted_password := '';
   return new;
 end
 $$;
@@ -132,7 +130,7 @@ $$;
 
 -- Grants: authenticated only; anon gets nothing.
 
-revoke all on public.players, public.ratings from anon, public;
+revoke all on public.players, public.ratings from anon, authenticated, public;
 revoke execute on function
   public.current_player_id(), public.is_admin(), public.ranking(),
   public.enforce_player_allowlist(), public.touch_rating(), public.keep_player_email()
@@ -140,6 +138,9 @@ revoke execute on function
 revoke execute on function
   public.enforce_player_allowlist(), public.touch_rating(), public.keep_player_email()
   from authenticated;
-grant select, insert, update, delete on public.players, public.ratings to authenticated;
+-- Only name and is_admin of a player can change; id and email are identity.
+grant select, insert, delete on public.players to authenticated;
+grant update (name, is_admin) on public.players to authenticated;
+grant select, insert, update, delete on public.ratings to authenticated;
 grant execute on function public.current_player_id(), public.is_admin(), public.ranking()
   to authenticated;

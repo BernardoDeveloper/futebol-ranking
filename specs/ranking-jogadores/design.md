@@ -47,12 +47,13 @@ helpers do the mapping, `current_player_id()` and `is_admin()`; everything below
 on them.
 
 - **Allowlist (R1.3, R1.7).** A trigger on `auth.users` raises unless the email
-  belongs to a player, and raises on any non-empty password. So an unknown address
-  never gets an account, and nobody can pre-create a victim's account with a password
-  of their own and sign in with it later.
-- **Email is immutable (R2.5).** A trigger on `players` rejects changing `email`.
-  Otherwise an admin could repoint a player's email to an inbox they own and log in
-  as that player.
+  belongs to a player, and blanks `encrypted_password` on every insert and password
+  change. Discarding rather than refusing matters: GoTrue's access-code signup writes a
+  random temporary password, so refusing would block every first login. Blanking still
+  stops anyone pre-creating a victim's account with a password of their own.
+- **Identity is immutable (R2.5).** A trigger on `players` rejects changing `email`,
+  and `authenticated` may update only `name` and `is_admin`. Otherwise an admin could
+  repoint a player's email to an inbox they own and log in as that player.
 - **Admins cannot remove themselves (R2.6)**, so the last admin cannot lock the team out.
 - **Row-level security (R1.5, R2.3, R3.3, R3.5).**
   - `players`: select when `current_player_id() is not null`; insert, update, delete
