@@ -59,21 +59,19 @@ describe('R1.3 account creation is limited to registered players', () => {
   });
 });
 
-describe('R1.3 R1.7 accounts change only within the allowlist, and never get a password', () => {
-  it('refuses an account created with a password, even for a registered email', async () => {
-    await expect(
-      db.query(`insert into auth.users (email, encrypted_password) values ($1, 'hash')`, [ANA]),
-    ).rejects.toThrow();
+describe('R1.3 R1.7 accounts change only within the allowlist, and never keep a password', () => {
+  const storedPassword = async (): Promise<string | null | undefined> =>
+    (await db.query<{ p: string | null }>(`select encrypted_password as p from auth.users`)).rows[0]?.p;
+
+  it('creates the account an access-code login makes, discarding the temporary password GoTrue sets', async () => {
+    await db.query(`insert into auth.users (email, encrypted_password) values ($1, '$2a$10$randomhash')`, [ANA]);
+    expect(await storedPassword()).toBe('');
   });
 
-  it('accepts the passwordless account an access-code login creates', async () => {
-    await db.query(`insert into auth.users (email, encrypted_password) values ($1, '')`, [ANA]);
-    expect(await count(`select 1 from auth.users`)).toBe(1);
-  });
-
-  it('refuses giving an existing account a password', async () => {
+  it('discards a password given to an existing account', async () => {
     await db.query(`insert into auth.users (email) values ($1)`, [ANA]);
-    await expect(db.query(`update auth.users set encrypted_password = 'hash'`)).rejects.toThrow();
+    await db.query(`update auth.users set encrypted_password = 'attacker-hash'`);
+    expect(await storedPassword()).toBe('');
   });
 
   it('refuses moving an account to an unregistered email', async () => {
@@ -176,6 +174,12 @@ describe('R2 player management', () => {
     ).rejects.toThrow();
     await as(db, player(ADMIN), (tx) => tx.query(`update players set name = 'Bruno S.' where id = $1`, [id(BRUNO)]));
     expect(await count(`select 1 from players where name = 'Bruno S.' and email = $1`, [BRUNO])).toBe(1);
+  });
+
+  it('R2.5 an admin cannot change a player\'s id either', async () => {
+    await expect(
+      as(db, player(ADMIN), (tx) => tx.query(`update players set id = gen_random_uuid() where id = $1`, [id(BRUNO)])),
+    ).rejects.toThrow();
   });
 
   it('R2.6 an admin cannot remove themselves', async () => {
