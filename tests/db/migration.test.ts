@@ -1,6 +1,6 @@
 import type { PGlite } from '@electric-sql/pglite';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { anon, as, freshDatabase, player } from './harness';
+import { anon, as, freshDatabase, player, unconfirmed } from './harness';
 
 const ADMIN = 'admin@acme.com';
 const ANA = 'ana@acme.com';
@@ -59,7 +59,55 @@ describe('R1.3 account creation is limited to registered players', () => {
   });
 });
 
+describe('R1.3 R1.7 accounts change only within the allowlist, and never get a password', () => {
+  it('refuses an account created with a password, even for a registered email', async () => {
+    await expect(
+      db.query(`insert into auth.users (email, encrypted_password) values ($1, 'hash')`, [ANA]),
+    ).rejects.toThrow();
+  });
+
+  it('accepts the passwordless account an access-code login creates', async () => {
+    await db.query(`insert into auth.users (email, encrypted_password) values ($1, '')`, [ANA]);
+    expect(await count(`select 1 from auth.users`)).toBe(1);
+  });
+
+  it('refuses giving an existing account a password', async () => {
+    await db.query(`insert into auth.users (email) values ($1)`, [ANA]);
+    await expect(db.query(`update auth.users set encrypted_password = 'hash'`)).rejects.toThrow();
+  });
+
+  it('refuses moving an account to an unregistered email', async () => {
+    await db.query(`insert into auth.users (email) values ($1)`, [ANA]);
+    await expect(db.query(`update auth.users set email = $1`, [STRANGER])).rejects.toThrow();
+  });
+});
+
 describe('R1.5 sessions that are not a player see nothing', () => {
+  it('returns nothing to an account whose email is not yet confirmed', async () => {
+    await rate(ANA, BRUNO, 8);
+    const seen = await as(db, unconfirmed(CAIO), async (tx) => ({
+      players: (await tx.query(`select * from players`)).rows.length,
+      ratings: (await tx.query(`select * from ratings`)).rows.length,
+      ranking: (await tx.query(`select * from ranking()`)).rows.length,
+    }));
+    expect(seen).toEqual({ players: 0, ratings: 0, ranking: 0 });
+  });
+
+  it('identifies the session by its account, not by an email claim it carries', async () => {
+    const caio = await as(db, player(CAIO), async (tx) =>
+      (await tx.query<{ sub: string }>(`select auth.uid()::text as sub`)).rows[0]?.sub,
+    );
+    // Caio's account presenting a token whose email claim says Ana.
+    const forged = await db.transaction(async (tx) => {
+      await tx.query(`select set_config('request.jwt.claims', $1, true)`, [
+        JSON.stringify({ role: 'authenticated', email: ANA, sub: caio }),
+      ]);
+      await tx.exec(`set local role authenticated`);
+      return (await tx.query<{ id: string | null }>(`select current_player_id() as id`)).rows[0]?.id;
+    });
+    expect(forged).toBe(id(CAIO));
+  });
+
   it('returns no players, ratings, or ranking to an authenticated non-player', async () => {
     await rate(ANA, BRUNO, 8);
     const seen = await as(db, player(STRANGER), async (tx) => ({
@@ -120,6 +168,25 @@ describe('R2 player management', () => {
       { name: 'Bruno', is_admin: false },
       { name: 'Caio', is_admin: false },
     ]);
+  });
+
+  it('R2.5 rejects changing a player\'s email, admins included', async () => {
+    await expect(
+      as(db, player(ADMIN), (tx) => tx.query(`update players set email = 'me-too@acme.com' where id = $1`, [id(BRUNO)])),
+    ).rejects.toThrow();
+    await as(db, player(ADMIN), (tx) => tx.query(`update players set name = 'Bruno S.' where id = $1`, [id(BRUNO)]));
+    expect(await count(`select 1 from players where name = 'Bruno S.' and email = $1`, [BRUNO])).toBe(1);
+  });
+
+  it('R2.6 an admin cannot remove themselves', async () => {
+    await as(db, player(ADMIN), (tx) => tx.query(`delete from players where id = $1`, [id(ADMIN)]));
+    expect(await count(`select 1 from players where id = $1`, [id(ADMIN)])).toBe(1);
+  });
+
+  it('rejects a name spanning lines, which would break the copied ranking', async () => {
+    await expect(
+      as(db, player(ADMIN), (tx) => tx.query(`insert into players (name, email) values ($1, 'x@acme.com')`, ['Ana\nBruno - 10'])),
+    ).rejects.toThrow();
   });
 
   it('R2.4 rejects an email that already belongs to a player', async () => {

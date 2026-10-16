@@ -2,7 +2,7 @@
 
 ## What changes
 
-Serves R1.1–R1.6, R2.1–R2.4, R3.1–R3.5, R4.1–R4.3, R5.1, R5.2.
+Serves R1.1–R1.7, R2.1–R2.6, R3.1–R3.5, R4.1–R4.3, R5.1, R5.2.
 
 A new static single-page app (Vite + TypeScript, no UI framework) talking directly to
 Supabase, per adr:0001-use-supabase-for-auth-and-data. Every rule that protects one
@@ -40,13 +40,20 @@ R2.4.
 
 ## Boundaries and contracts
 
-The session's identity is the email claim in the Supabase JWT, read as
-`auth.jwt() ->> 'email'`. Two `security definer` helpers map it to a player:
-`current_player_id()` and `is_admin()`. Everything below keys on them.
+The session's identity is its auth account: `auth.uid()` joined to `auth.users`,
+counted only once `email_confirmed_at` is set, and matched to a player by that
+account's email. The JWT's email claim alone is not trusted. Two `security definer`
+helpers do the mapping, `current_player_id()` and `is_admin()`; everything below keys
+on them.
 
-- **Allowlist (R1.3).** A `before insert` trigger on `auth.users` raises unless the
-  new email belongs to a player, so an unknown address never gets an account and the
-  access code is never sent.
+- **Allowlist (R1.3, R1.7).** A trigger on `auth.users` raises unless the email
+  belongs to a player, and raises on any non-empty password. So an unknown address
+  never gets an account, and nobody can pre-create a victim's account with a password
+  of their own and sign in with it later.
+- **Email is immutable (R2.5).** A trigger on `players` rejects changing `email`.
+  Otherwise an admin could repoint a player's email to an inbox they own and log in
+  as that player.
+- **Admins cannot remove themselves (R2.6)**, so the last admin cannot lock the team out.
 - **Row-level security (R1.5, R2.3, R3.3, R3.5).**
   - `players`: select when `current_player_id() is not null`; insert, update, delete
     only when `is_admin()`.
@@ -67,6 +74,13 @@ that `verifyOtp({ email, token, type: 'email' })` checks (R1.2).
 
 ## Risks
 
+- The ranking shows each player's average and count to every player. A player with
+  one rating has that rating exposed as the average, and someone watching the ranking
+  over time can infer individual changes. Accepted: the team wants averages
+  immediately, and the inference needs side information to attribute a rating.
+- An unregistered email gets a distinct "not registered" message at login, which
+  reveals who is a player. Accepted for a company team; captcha on auth is the README's
+  mitigation against scripted use.
 - Supabase's built-in mailer allows only a few emails per hour; a whole team logging in
   before a game will hit it. Configuring custom SMTP is a deployment step in the README.
 - The policies cannot be exercised against real Supabase in CI. The PGlite tests stub
