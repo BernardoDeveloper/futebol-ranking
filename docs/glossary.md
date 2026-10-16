@@ -1,24 +1,10 @@
 # Glossary
 
-One canonical term per concept, and the synonyms nobody should use for it. Domain
-vocabulary drifts by default — three names for one thing appear within a week of two
-people working in parallel — so this file picks the name and the rest become
-findings.
+One canonical term per concept, and the synonyms nobody should use for it.
 
-One entry per line:
-
-```markdown
-- **order total** — the amount charged, in minor units. Avoid: grand total, sum
-```
-
-The term is bold, the definition follows an em dash, and `Avoid:` lists the
-synonyms it replaces, comma-separated and optional. Every synonym listed here is
-reported wherever it appears as a whole word under `docs/`, so list one only when
-you mean it.
-
-Reach for the `glossary` skill when a term is coined, contested, or renamed. Define
-what the thing *is*, not what it is called, and do not define what is obvious to
-anyone in the domain.
-
-<!-- Entries go below this line. Delete the guidance above once they read for
-themselves. -->
+- **player** — a registered member of the team, identified by their company email; only players can log in. Avoid: user, athlete
+- **admin** — a player allowed to register and remove players.
+- **rating** — the whole number from 1 to 10 one player gives another; one per pair, overwritten when changed. Avoid: vote, score, grade
+- **average rating** — the mean of the ratings a player received, rounded to one decimal.
+- **ranking** — every player ordered by average rating, highest first, unrated players last.
+- **access code** — the one-time code emailed at login. Avoid: OTP code, token

@@ -1,39 +1,36 @@
 # This project
 
-**This file is yours.** `scc` ships it as a stub, records that it did, and never
-touches it again — an upgrade will leave whatever you write here alone. It is also
-the reason `scc` needs no configuration file: the commands below are Markdown, which
-the orchestrator already reads, and `scc` itself runs neither of them.
-
-Fill it in. An empty answer here means every session re-derives your build commands
-by guessing.
+Static SPA (Vite + TypeScript) on GitHub Pages; Supabase is the whole backend
+(see docs/adr/0001-use-supabase-for-auth-and-data.md).
 
 ## Commands
 
 ```bash
 # Build
-<command>
+npm run build
 
 # Test — the whole suite
-<command>
+npm test
 
-# Test — one package or one file (used after every task; scope, not suite)
-<command>
+# Test — one file (used after every task; scope, not suite)
+npx vitest run tests/<file>.test.ts
 
-# Lint — the best-practices layer that finds what tests do not
-<command>
+# Lint — ESLint (strict type-checked) plus tsc
+npm run lint
 
 # Format / format check
-<command>
+# none adopted
 ```
 
 ## Conventions
 
-- **Branch names:** e.g. `feat/<slug>`, `fix/<slug>`
-- **Commits:** e.g. Conventional Commits, scoped by package
-- **Anything a new contributor gets wrong on their first try:** …
+- **Branch names:** `feat/<slug>`, `fix/<slug>`
+- **Commits:** Conventional Commits
+- **Anything a new contributor gets wrong on their first try:** authorization lives in
+  `supabase/migrations/`, never in the browser. A rule enforced only in `src/` is not
+  enforced. Prove a policy change in `tests/db/`.
 
 ## Boundaries
 
-Things that are *not* to be changed without asking, and why. Generated files,
-vendored trees, public API surfaces, migration files that have already run.
+- `supabase/migrations/*.sql` that have already been run on the Supabase project are
+  never edited; add a new numbered migration instead.
