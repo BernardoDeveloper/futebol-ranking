@@ -25,7 +25,7 @@ export function rankingView(api: Api, copy: (text: string) => Promise<boolean> =
               return;
             }
             status.textContent = 'Não deu para copiar. Selecione o texto abaixo:';
-            const area = h('textarea', { readonly: true, rows: String(Math.min(chosen.length, 20)) }, text);
+            const area = h('textarea', { readonly: true, rows: String(Math.min(chosen.length + 2, 20)) }, text);
             fallback.replaceChildren(area);
             area.select();
           });

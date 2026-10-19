@@ -2,8 +2,8 @@
 
 Painel do futebol mensal do time: o admin cadastra os jogadores, cada jogador dá uma
 nota de 1 a 10 para os outros, e o ranking mostra a média de cada um. O botão
-**Copiar** copia `Nome - média`, uma linha por jogador, para colar no balanceador de
-times.
+**Copiar** copia um prompt pedindo os times balanceados, seguido de `Nome - média`, uma
+linha por jogador marcado, para colar numa IA que monta os times.
 
 O login é por código: o jogador digita o email da empresa e recebe um código de acesso.
 Só emails cadastrados por um admin conseguem entrar, e o banco garante que ninguém

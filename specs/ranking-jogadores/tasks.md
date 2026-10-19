@@ -41,3 +41,8 @@
 
 - [x] 6.1 (Unit) Add a checkbox per player and a check-all checkbox to the ranking, copy only the selected players, and disable "Copiar" while none is selected — R4.2, R4.4, R4.5
   _Reason new requirement: select who is at the game_
+
+## 7 · Team-split prompt
+
+- [x] 7.1 (Unit) Open the "Copiar" text with the team-split prompt and a blank line — R4.2
+  _Reason new requirement: copy a prompt for an AI to split the teams_

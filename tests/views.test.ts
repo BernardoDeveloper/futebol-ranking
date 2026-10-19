@@ -2,7 +2,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { Player } from '../src/api';
 import type { Config } from '../src/config';
-import type { RankingRow } from '../src/ranking';
+import { COPY_PROMPT, type RankingRow } from '../src/ranking';
 import { playersView } from '../src/views/players';
 import { rankingView } from '../src/views/ranking';
 import { ratingsView } from '../src/views/ratings';
@@ -24,6 +24,8 @@ const button = (root: HTMLElement, label: string): HTMLButtonElement => {
   if (!found) throw new Error(`no button "${label}"`);
   return found;
 };
+
+const copied = (lines: string): string => `${COPY_PROMPT}\n\n${lines}`;
 
 const checkboxes = (root: HTMLElement): HTMLInputElement[] => [
   ...root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
@@ -57,7 +59,7 @@ describe('rankingView', () => {
     await settle();
     button(root, 'Copiar').click();
     await settle();
-    expect(copy).toHaveBeenCalledWith('Ana - 8.7\nBruno - 7.5\nCaio - sem nota');
+    expect(copy).toHaveBeenCalledWith(copied('Ana - 8.7\nBruno - 7.5\nCaio - sem nota'));
     expect(root.querySelector('.status')?.textContent).toBe('Copiado!');
   });
 
@@ -67,7 +69,7 @@ describe('rankingView', () => {
     await settle();
     button(root, 'Copiar').click();
     await settle();
-    expect(root.querySelector('textarea')?.value).toBe('Ana - 8.7\nBruno - 7.5\nCaio - sem nota');
+    expect(root.querySelector('textarea')?.value).toBe(copied('Ana - 8.7\nBruno - 7.5\nCaio - sem nota'));
   });
 
   it('R4.4 offers a checkbox per player, all checked when the ranking opens', async () => {
@@ -92,7 +94,7 @@ describe('rankingView', () => {
     toggle(checkboxes(root)[2]);
     button(root, 'Copiar').click();
     await settle();
-    expect(copy).toHaveBeenCalledWith('Ana - 8.7\nCaio - sem nota');
+    expect(copy).toHaveBeenCalledWith(copied('Ana - 8.7\nCaio - sem nota'));
     expect(checkboxes(root)[0]?.indeterminate).toBe(true);
   });
 
@@ -109,7 +111,7 @@ describe('rankingView', () => {
     expect(checkboxes(root).every((b) => b.checked)).toBe(true);
     button(root, 'Copiar').click();
     await settle();
-    expect(copy).toHaveBeenCalledWith('Ana - 8.7\nBruno - 7.5\nCaio - sem nota');
+    expect(copy).toHaveBeenCalledWith(copied('Ana - 8.7\nBruno - 7.5\nCaio - sem nota'));
   });
 
   it('R4.5 disables "Copiar" while no player is selected', async () => {
@@ -131,7 +133,7 @@ describe('rankingView', () => {
     toggle(checkboxes(root)[1]);
     button(root, 'Copiar').click();
     await settle();
-    expect(root.querySelector('textarea')?.value).toBe('Bruno - 7.5\nCaio - sem nota');
+    expect(root.querySelector('textarea')?.value).toBe(copied('Bruno - 7.5\nCaio - sem nota'));
   });
 
   it('clears the copied text when the selection changes, so it is never stale', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatAverage, NO_RATING, rankingText, type RankingRow } from '../src/ranking';
+import { COPY_PROMPT, formatAverage, NO_RATING, rankingText, type RankingRow } from '../src/ranking';
 
 describe('formatAverage (R4.1)', () => {
   it('shows one decimal', () => {
@@ -24,12 +24,14 @@ describe('rankingText (R4.2)', () => {
     ratings_count,
   });
 
-  it('writes one "<name> - <average rating>" line per player, keeping ranking order', () => {
+  it('opens with the team-split prompt and a blank line, then one "<name> - <average rating>" line per player in ranking order', () => {
     const rows = [row('Ana', 8.7, 3), row('Bruno', 7.5, 2), row('Caio', null, 0)];
-    expect(rankingText(rows)).toBe(`Ana - 8.7\nBruno - 7.5\nCaio - ${NO_RATING}`);
+    expect(rankingText(rows)).toBe(
+      `Baseado nessa lista monte um time dividido, deixando balanceado conforme a pontuação\n\nAna - 8.7\nBruno - 7.5\nCaio - ${NO_RATING}`,
+    );
   });
 
-  it('is empty for an empty ranking', () => {
-    expect(rankingText([])).toBe('');
+  it('is only the prompt for an empty list', () => {
+    expect(rankingText([])).toBe(`${COPY_PROMPT}\n`);
   });
 });
