@@ -22,6 +22,8 @@ export interface Api {
   /** The ratings the signed-in player has given, by rated player id. */
   myRatings(): Promise<Map<string, number>>;
   rate(raterId: string, ratedId: string, value: number): Promise<void>;
+  /** Deletes the rating, so it no longer counts toward the rated player's average. */
+  clearRating(raterId: string, ratedId: string): Promise<void>;
   ranking(): Promise<RankingRow[]>;
 }
 
@@ -96,6 +98,10 @@ export function supabaseApi(client: SupabaseClient<Database>): Api {
       const { error } = await client
         .from('ratings')
         .upsert({ rater_id: raterId, rated_id: ratedId, value }, { onConflict: 'rater_id,rated_id' });
+      check(error);
+    },
+    async clearRating(raterId, ratedId) {
+      const { error } = await client.from('ratings').delete().eq('rater_id', raterId).eq('rated_id', ratedId);
       check(error);
     },
     async ranking() {

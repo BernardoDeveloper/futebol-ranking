@@ -39,6 +39,7 @@ in another player's name.
 - **R3.3** If a player attempts to save, change, or delete a rating in another player's name, then the backend shall reject it.
 - **R3.4** If a player attempts to rate themselves, then the backend shall reject it.
 - **R3.5** The backend shall return each individual rating only to the player who gave it; every other player sees ratings only as the ranking's averages.
+- **R3.6** (ADDED) When the authenticated player clears the rating they gave another player, the app shall delete that rating, so it no longer counts toward that player's average rating.
 
 ## R4 · Ranking
 

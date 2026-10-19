@@ -2,7 +2,7 @@
 
 ## What changes
 
-Serves R1.1–R1.7, R2.1–R2.6, R3.1–R3.5, R4.1–R4.3, R5.1, R5.2.
+Serves R1.1–R1.7, R2.1–R2.6, R3.1–R3.6, R4.1–R4.3, R5.1, R5.2.
 
 A new static single-page app (Vite + TypeScript, no UI framework) talking directly to
 Supabase, per adr:0001-use-supabase-for-auth-and-data. Every rule that protects one
@@ -55,11 +55,12 @@ on them.
   and `authenticated` may update only `name` and `is_admin`. Otherwise an admin could
   repoint a player's email to an inbox they own and log in as that player.
 - **Admins cannot remove themselves (R2.6)**, so the last admin cannot lock the team out.
-- **Row-level security (R1.5, R2.3, R3.3, R3.5).**
+- **Row-level security (R1.5, R2.3, R3.3, R3.5, R3.6).**
   - `players`: select when `current_player_id() is not null`; insert, update, delete
     only when `is_admin()`.
   - `ratings`: select, insert, update, delete only where `rater_id = current_player_id()`.
-    Nobody, admins included, can read another player's individual ratings.
+    Nobody, admins included, can read another player's individual ratings. Clearing a
+    rating (R3.6) is a plain delete under this same policy, so it needed no migration.
 - **Ranking (R4.1).** `ranking()` is a `security definer` function returning
   `player_id, name, average, ratings_count`, already ordered (average desc nulls last,
   then name), and empty when `current_player_id()` is null. It is the only way
