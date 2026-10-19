@@ -89,6 +89,8 @@ button.danger { background: transparent; color: var(--danger); border: 1px solid
 table { width: 100%; border-collapse: collapse; margin-top: 12px; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--border); }
 th { color: var(--muted); font-size: 0.8rem; font-weight: 600; text-transform: uppercase; }
+.pick { width: 2rem; }
+.pick input { width: auto; margin: 0; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
 
 ul { list-style: none; margin: 0; padding: 0; }

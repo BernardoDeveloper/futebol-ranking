@@ -36,3 +36,8 @@
 - [x] 5.2 (Unit) Add clearRating to the API and let the ratings view clear a rating with the empty option — R3.6
   _Depends 5.1_
   _Reason new requirement: clear a rating_
+
+## 6 · Selecting players for the game
+
+- [x] 6.1 (Unit) Add a checkbox per player and a check-all checkbox to the ranking, copy only the selected players, and disable "Copiar" while none is selected — R4.2, R4.4, R4.5
+  _Reason new requirement: select who is at the game_

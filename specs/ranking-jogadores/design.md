@@ -2,7 +2,7 @@
 
 ## What changes
 
-Serves R1.1–R1.7, R2.1–R2.6, R3.1–R3.6, R4.1–R4.3, R5.1, R5.2.
+Serves R1.1–R1.7, R2.1–R2.6, R3.1–R3.6, R4.1–R4.5, R5.1, R5.2.
 
 A new static single-page app (Vite + TypeScript, no UI framework) talking directly to
 Supabase, per adr:0001-use-supabase-for-auth-and-data. Every rule that protects one
@@ -66,6 +66,10 @@ on them.
   then name), and empty when `current_player_id()` is null. It is the only way
   averages leave the database, so individual ratings stay private.
 - `anon` gets no grants on any table or function.
+
+**Selecting players (R4.4, R4.5).** The selection lives only in the ranking view's
+memory: it is not saved, and opening the ranking again starts with every player
+selected. Nothing reaches the database, so it needs no policy.
 
 **Bootstrap.** The first admin is inserted by hand in the Supabase SQL editor; the
 README says how. After that, admins register everyone else from the app.
