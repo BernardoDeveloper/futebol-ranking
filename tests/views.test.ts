@@ -70,7 +70,7 @@ describe('rankingView', () => {
 });
 
 describe('ratingsView', () => {
-  it('R3.1 offers 1 to 10 for every player except oneself, preselecting the current rating', async () => {
+  it('R3.1 R3.6 offers no rating and 1 to 10 for every player except oneself, preselecting the current rating', async () => {
     const { api } = fakeApi({ players: [ana, bruno, caio], ratings: new Map([['b', 6]]) });
     const root = ratingsView(api, ana);
     await settle();
@@ -79,8 +79,65 @@ describe('ratingsView', () => {
     expect(selects[0]?.value).toBe('6');
     expect(selects[1]?.value).toBe('');
     expect([...(selects[0]?.options ?? [])].filter((o) => !o.disabled).map((o) => o.value)).toEqual(
-      ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
+      ['', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
     );
+  });
+
+  it('R3.6 clears the rating when the signed-in player picks no rating', async () => {
+    const { api } = fakeApi({ players: [ana, bruno], ratings: new Map([['b', 6]]) });
+    const root = ratingsView(api, ana);
+    await settle();
+    const select = root.querySelector('select');
+    if (!select) throw new Error('no select');
+    select.value = '';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    expect(api.clearRating).toHaveBeenCalledWith('a', 'b');
+    expect(api.rate).not.toHaveBeenCalled();
+    expect(root.querySelector('.status')?.textContent).toBe('Salvo');
+  });
+
+  it('puts no rating back when saving fails after a rating was cleared', async () => {
+    const { api } = fakeApi({ players: [ana, bruno], ratings: new Map([['b', 6]]) });
+    api.rate.mockRejectedValueOnce(new Error('denied'));
+    const root = ratingsView(api, ana);
+    await settle();
+    const select = root.querySelector('select');
+    if (!select) throw new Error('no select');
+    select.value = '';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    select.value = '9';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    expect(select.value).toBe('');
+    expect(root.querySelector('.status')?.textContent).toBe('denied');
+  });
+
+  it('R3.6 does nothing when no rating is picked for a player not yet rated', async () => {
+    const { api } = fakeApi({ players: [ana, bruno] });
+    const root = ratingsView(api, ana);
+    await settle();
+    const select = root.querySelector('select');
+    if (!select) throw new Error('no select');
+    select.value = '';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    expect(api.clearRating).not.toHaveBeenCalled();
+  });
+
+  it('puts the previous rating back when clearing fails', async () => {
+    const { api } = fakeApi({ players: [ana, bruno], ratings: new Map([['b', 6]]) });
+    api.clearRating.mockRejectedValueOnce(new Error('denied'));
+    const root = ratingsView(api, ana);
+    await settle();
+    const select = root.querySelector('select');
+    if (!select) throw new Error('no select');
+    select.value = '';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    expect(select.value).toBe('6');
+    expect(root.querySelector('.status')?.textContent).toBe('denied');
   });
 
   it('R3.1 saves a rating given by the signed-in player when it changes', async () => {

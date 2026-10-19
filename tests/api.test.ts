@@ -74,6 +74,14 @@ describe('supabaseApi', () => {
     });
   });
 
+  it('R3.6 clears a rating by deleting the rater/rated pair', async () => {
+    const { client, calls } = fakeClient();
+    await supabaseApi(client).clearRating('a', 'b');
+    expect(calls).toContainEqual({ path: 'client.from', args: ['ratings'] });
+    expect(calls).toContainEqual({ path: 'client.from.delete.eq', args: ['rater_id', 'a'] });
+    expect(calls).toContainEqual({ path: 'client.from.delete.eq.eq', args: ['rated_id', 'b'] });
+  });
+
   it('indexes the signed-in player\'s ratings by rated player', async () => {
     const { client } = fakeClient({ data: [{ rated_id: 'b', value: 7 }] });
     expect(await supabaseApi(client).myRatings()).toEqual(new Map([['b', 7]]));

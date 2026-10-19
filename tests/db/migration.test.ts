@@ -283,4 +283,18 @@ describe('R4.1 ranking', () => {
       { name: 'Caio', average: null, ratings_count: 0 },
     ]);
   });
+
+  it('R3.6 stops counting a rating its rater cleared', async () => {
+    await rate(ANA, BRUNO, 2);
+    await rate(CAIO, BRUNO, 8);
+    await as(db, player(ANA), (tx) =>
+      tx.query(`delete from ratings where rater_id = $1 and rated_id = $2`, [id(ANA), id(BRUNO)]),
+    );
+    const r = await as(db, player(CAIO), (tx) =>
+      tx.query<{ name: string; average: string | null; ratings_count: number }>(
+        `select name, average::text as average, ratings_count from ranking() where name = 'Bruno'`,
+      ),
+    );
+    expect(r.rows).toEqual([{ name: 'Bruno', average: '8.0', ratings_count: 1 }]);
+  });
 });

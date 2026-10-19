@@ -28,3 +28,11 @@
   _Reason security review findings_
 - [x] 4.2 (Unit) Render the app only when the session email changes, map only database errors to "not registered", state the unrated copy line — R1.1, R1.2, R4.2
   _Reason code review findings_
+
+## 5 · Clearing a rating
+
+- [x] 5.1 (Unit) Prove in PGlite that a player can delete their own rating and the ranking stops counting it — R3.6
+  _Reason new requirement: clear a rating_
+- [x] 5.2 (Unit) Add clearRating to the API and let the ratings view clear a rating with the empty option — R3.6
+  _Depends 5.1_
+  _Reason new requirement: clear a rating_

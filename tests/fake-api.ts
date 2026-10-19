@@ -24,6 +24,7 @@ export function fakeApi(state: { players?: Player[]; ratings?: Map<string, numbe
     removePlayer: vi.fn((_id: string) => Promise.resolve()),
     myRatings: vi.fn(() => Promise.resolve(new Map(state.ratings ?? []))),
     rate: vi.fn((_rater: string, _rated: string, _value: number) => Promise.resolve()),
+    clearRating: vi.fn((_rater: string, _rated: string) => Promise.resolve()),
     ranking: vi.fn(() => Promise.resolve(state.ranking ?? [])),
   } satisfies Api;
   return { api, signIn: (email: string | null) => listener?.(email) };
