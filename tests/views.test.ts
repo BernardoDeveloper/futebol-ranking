@@ -25,13 +25,23 @@ const button = (root: HTMLElement, label: string): HTMLButtonElement => {
   return found;
 };
 
+const checkboxes = (root: HTMLElement): HTMLInputElement[] => [
+  ...root.querySelectorAll<HTMLInputElement>('input[type="checkbox"]'),
+];
+
+function toggle(box: HTMLInputElement | undefined): void {
+  if (!box) throw new Error('no checkbox');
+  box.checked = !box.checked;
+  box.dispatchEvent(new Event('change'));
+}
+
 describe('rankingView', () => {
   it('R4.1 lists every player in ranking order with average rating and number of ratings', async () => {
     const { api } = fakeApi({ ranking });
     const root = rankingView(api);
     await settle();
     const rows = [...root.querySelectorAll('tbody tr')].map((tr) =>
-      [...tr.querySelectorAll('td')].map((td) => td.textContent),
+      [...tr.querySelectorAll('td:not(.pick)')].map((td) => td.textContent),
     );
     expect(rows).toEqual([
       ['1', 'Ana', '8.7', '3'],
@@ -58,6 +68,81 @@ describe('rankingView', () => {
     button(root, 'Copiar').click();
     await settle();
     expect(root.querySelector('textarea')?.value).toBe('Ana - 8.7\nBruno - 7.5\nCaio - sem nota');
+  });
+
+  it('R4.4 offers a checkbox per player, all checked when the ranking opens', async () => {
+    const { api } = fakeApi({ ranking });
+    const root = rankingView(api);
+    await settle();
+    const boxes = checkboxes(root);
+    expect(boxes.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Selecionar todos',
+      'Ana vai jogar',
+      'Bruno vai jogar',
+      'Caio vai jogar',
+    ]);
+    expect(boxes.every((b) => b.checked)).toBe(true);
+  });
+
+  it('R4.2 R4.4 "Copiar" copies only the selected players, in ranking order', async () => {
+    const { api } = fakeApi({ ranking });
+    const copy = vi.fn((_text: string) => Promise.resolve(true));
+    const root = rankingView(api, copy);
+    await settle();
+    toggle(checkboxes(root)[2]);
+    button(root, 'Copiar').click();
+    await settle();
+    expect(copy).toHaveBeenCalledWith('Ana - 8.7\nCaio - sem nota');
+    expect(checkboxes(root)[0]?.indeterminate).toBe(true);
+  });
+
+  it('R4.4 the check-all checkbox unchecks and checks every player at once', async () => {
+    const { api } = fakeApi({ ranking });
+    const copy = vi.fn((_text: string) => Promise.resolve(true));
+    const root = rankingView(api, copy);
+    await settle();
+    const [all] = checkboxes(root);
+    toggle(all);
+    expect(checkboxes(root).slice(1).some((b) => b.checked)).toBe(false);
+    toggle(checkboxes(root)[1]);
+    toggle(all);
+    expect(checkboxes(root).every((b) => b.checked)).toBe(true);
+    button(root, 'Copiar').click();
+    await settle();
+    expect(copy).toHaveBeenCalledWith('Ana - 8.7\nBruno - 7.5\nCaio - sem nota');
+  });
+
+  it('R4.5 disables "Copiar" while no player is selected', async () => {
+    const { api } = fakeApi({ ranking });
+    const root = rankingView(api);
+    await settle();
+    const [all] = checkboxes(root);
+    toggle(all);
+    expect(button(root, 'Copiar').disabled).toBe(true);
+    toggle(checkboxes(root)[3]);
+    expect(button(root, 'Copiar').disabled).toBe(false);
+    expect(all?.checked).toBe(false);
+  });
+
+  it('R4.3 R4.4 shows only the selected players for manual copying when the clipboard fails', async () => {
+    const { api } = fakeApi({ ranking });
+    const root = rankingView(api, () => Promise.resolve(false));
+    await settle();
+    toggle(checkboxes(root)[1]);
+    button(root, 'Copiar').click();
+    await settle();
+    expect(root.querySelector('textarea')?.value).toBe('Bruno - 7.5\nCaio - sem nota');
+  });
+
+  it('clears the copied text when the selection changes, so it is never stale', async () => {
+    const { api } = fakeApi({ ranking });
+    const root = rankingView(api, () => Promise.resolve(false));
+    await settle();
+    button(root, 'Copiar').click();
+    await settle();
+    toggle(checkboxes(root)[1]);
+    expect(root.querySelector('textarea')).toBeNull();
+    expect(root.querySelector('.status')?.textContent).toBe('');
   });
 
   it('shows a load failure', async () => {

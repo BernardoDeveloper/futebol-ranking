@@ -44,8 +44,10 @@ in another player's name.
 ## R4 · Ranking
 
 - **R4.1** The app shall show the ranking: every player with their average rating rounded to one decimal and the number of ratings received, ordered from highest to lowest average, with players who have no rating listed last.
-- **R4.2** When the player presses "Copiar", the app shall copy the ranking to the clipboard as one line per player, `<name> - <average rating>`, in ranking order, writing `sem nota` in place of the average for a player nobody has rated.
+- **R4.2** (MODIFIED) When the player presses "Copiar", the app shall copy the selected players to the clipboard as one line per player, `<name> - <average rating>`, in ranking order, writing `sem nota` in place of the average for a player nobody has rated.
 - **R4.3** If the clipboard write fails, then the app shall show the ranking text so it can be copied by hand.
+- **R4.4** (ADDED) The app shall show a checkbox beside every player in the ranking, all checked when the ranking opens, and one checkbox that checks or unchecks every player at once, so the player can select who is at the game.
+- **R4.5** (ADDED) While no player is selected, the app shall disable "Copiar".
 
 ## R5 · Hosting
 
