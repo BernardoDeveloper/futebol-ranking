@@ -71,3 +71,30 @@ npm run build                # gera dist/
 Toda regra de permissão mora em `supabase/migrations/`, nunca no navegador. Para mudar o
 banco depois de já ter rodado a migração no Supabase, crie uma nova migração numerada
 (`0002_...sql`) em vez de editar a antiga.
+
+## Agendamento da quadra
+
+Comando local que manda a mensagem de reserva da quadra pelo WhatsApp Web, no Chrome
+do seu computador:
+
+```bash
+npm run quadra -- 24/10            # envia
+npm run quadra -- 24/10 --dry-run  # só mostra a mensagem e o número
+```
+
+Mensagem enviada: "Bom dia. Tudo bem? A quadra 3 está disponível para o dia 24/10 às
+18:30?". O dia aceita `DD/MM` (a próxima ocorrência) ou `DD/MM/AAAA`.
+
+Configuração, uma vez:
+
+1. No `.env.local` (fora do git, o número não vai para o repositório público):
+   `COURT_WHATSAPP=<DDI DDD número>`, por exemplo `COURT_WHATSAPP=5511999990000`.
+2. Rode o comando. Na primeira vez o Chrome abre o WhatsApp Web pedindo o QR code:
+   leia com o celular (você tem 3 minutos). A sessão fica salva em
+   `~/.futebol-ranking/whatsapp` e as próximas execuções enviam direto.
+
+Precisa do Google Chrome instalado. Antes de enviar, o comando confere se a mensagem
+está pronta na conversa e se ela já não foi enviada (aí não manda de novo). Se algo
+falhar, o motivo aparece no terminal e a janela fica aberta para você conferir e
+enviar à mão. A pasta da sessão é o seu WhatsApp: não compartilhe nem sincronize. O WhatsApp proíbe automação nos termos de uso: uma mensagem
+por semana tem risco baixo, mas não zero.

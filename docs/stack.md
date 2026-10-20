@@ -16,4 +16,6 @@ decision, never something adopted silently.
 - **@electric-sql/pglite** — real Postgres in-process, so the RLS policies are tested without Docker.
 - **happy-dom** — a DOM for testing the views in Vitest without a browser.
 - **@types/node** — types for the Node APIs the database tests use to read the migration.
+- **playwright-core** — drives the installed Chrome through WhatsApp Web for the court booking command; the `-core` package downloads no browser.
+- **tsx** — runs the TypeScript court booking command directly; distro builds of Node 22 ship without type stripping.
 - **eslint**, **@eslint/js**, **typescript-eslint**, **globals** — the lint layer: unused code, floating promises, unsafe types.
