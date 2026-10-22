@@ -2,97 +2,78 @@
 
 ## What changes
 
-Serves R1.1–R1.9, R2.1–R2.4.
+Serves R1.1–R1.10, R2.1–R2.4.
 
-The first server-side code in the project: the AbacatePay API key is a secret and
-cannot reach the browser, so two Supabase Edge Functions hold it, per
-adr:0002-take-pix-payments-through-abacatepay-edge-functions. Every rule about who may
-manipulate, and when, still lives in SQL, per adr:0001-use-supabase-for-auth-and-data.
+A static Pix to the organizer's personal key, confirmed by an admin, per
+adr:0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin (which superseded
+the AbacatePay design of adr:0002-take-pix-payments-through-abacatepay-edge-functions:
+production there needs a CNPJ). No server code: every rule about who may manipulate,
+confirm or reject lives in SQL, per adr:0001-use-supabase-for-auth-and-data.
 
 ```
-supabase/migrations/0002_manipulations.sql   table, RLS, start_manipulation(), manipulated_ranking()
-supabase/functions/_shared/abacatepay.ts     createPix, checkPix: the two AbacatePay calls
-supabase/functions/_shared/manipulation.ts   start, check, reconcile: the flow, over a store and a gateway
-supabase/functions/_shared/http.ts           CORS, JSON replies, constant-time secret compare
-supabase/functions/_shared/env.ts            the project's URL and keys: new publishable/secret keys, else legacy
-supabase/functions/manipular/index.ts        POST {action: "start" | "check"}, called by the app with the player's JWT
-supabase/functions/abacatepay-webhook/index.ts  AbacatePay's webhook; no JWT, checked by ?webhookSecret=
-src/api.ts                                   manipulate, checkManipulation, isManipulated, manipulatedRanking
-src/views/ranking.ts                         "Manipular" on the player's own row, the Pix panel, polling
+supabase/migrations/0002_manipulations.sql   table, RLS, manipulated_ranking() — already run
+supabase/migrations/0003_manual_pix.sql      drops the charge columns; start, confirm, reject, pending list
+src/pix.ts                                   the static Pix BR Code (EMV fields + CRC16)
+src/config.ts                                VITE_PIX_KEY, VITE_PIX_NAME, VITE_PIX_CITY
+src/api.ts                                   manipulate, checkManipulation, isManipulated, manipulatedRanking,
+                                             pendingManipulations, confirmManipulation, rejectManipulation
+src/views/ranking.ts                         "Manipular" on the player's own row, the Pix panel
 src/views/manipulated.ts                     the Manipulados tab
+src/views/players.ts                         pending manipulations, for admins
 ```
-
-`_shared/` is plain TypeScript with no Deno or npm imports, so Vitest tests it in Node;
-the two `index.ts` files are thin Deno glue (`Deno.serve`, `npm:@supabase/supabase-js`)
-and are excluded from `tsc` and ESLint.
 
 ## Data
 
 ```
 manipulations  id uuid pk · player_id → players on delete cascade
-               status text check in (pending, paid, expired) default pending
-               charge_id text unique · br_code text · qr_code text · expires_at timestamptz
-               created_at · paid_at
-               unique (player_id) where status <> 'expired'
+               status text check in (pending, paid, rejected) default pending
+               created_at · paid_at · decided_by → players on delete set null
+               unique (player_id) where status <> 'rejected'
 ```
 
 The partial unique index is the "only once" rule (R1.5, R1.6): a player holds at most
-one manipulation that is pending or paid. `id` is sent to AbacatePay as `externalId`.
+one manipulation that is pending or paid. `decided_by` is the admin who confirmed or
+rejected it (R1.4). 0002's `charge_id`, `br_code`, `qr_code` and `expires_at` are
+dropped by 0003, and its `expired` status becomes `rejected`.
 
 ## Boundaries and contracts
 
-**Starting (R1.2, R1.5, R1.6).** `manipular` with `start` calls
-`start_manipulation()` as the player (their JWT). That `security definer` function
-raises for a non-player, raises `already manipulated` when a paid row exists, drops a
-pending row with no charge (never shown, so never payable), and returns the pending row
-or a fresh one. When the row has no charge yet, the function creates the Pix
-(`amount: 200`, `expiresIn: 1800`) and attaches `charge_id`, `br_code`, `qr_code`,
-`expires_at` with the service-role client, only to a row still pending and without a
-charge; if no row takes it (a concurrent start replaced it), the Pix is not shown, so
-no payable Pix ever goes unrecorded. A pending row past its `expires_at` is not expired
-by the clock: the function asks AbacatePay first, counts a late `PAID`, and opens a new
-Pix only once AbacatePay says `EXPIRED` or `CANCELLED`. The amount is a server
-constant; nothing the browser sends reaches it.
+**The Pix (R1.1, R1.2).** `src/pix.ts` builds the BR Code of the Banco Central's static
+Pix: payload format, the `br.gov.bcb.pix` account with the key, category `0000`,
+currency `986`, amount `2.00`, country, name (≤ 25), city (≤ 15), and the txid in field
+62, closed by a CRC16-CCITT over the whole payload. The txid is the manipulation's
+code: `MANIP` and the first 8 hex digits of its id, so an admin can match a payment in
+a statement that shows it. The key, name and city are build-time variables; the key is
+public by nature. Without a key, the button is not shown. The QR image is drawn in the
+browser from the same payload.
 
-**Authentication.** Both functions are deployed with `--no-verify-jwt`: the gateway's
-check does not support the asymmetric (ES256) JWT signing keys of projects on the new
-API keys. `manipular` relies on PostgREST instead, which verifies the player's JWT on
-every query the store makes with it; `start_manipulation()` runs before any AbacatePay
-call, so a caller who is not a player never reaches the gateway.
+**Opening (R1.2, R1.5, R1.6).** `start_manipulation()` (`security definer`) raises for
+a non-player, raises `already manipulated` when a paid row exists, and returns the
+player's pending row or a fresh one. Nothing is charged: the row only waits.
 
-**Confirming (R1.3, R1.4, R1.7).** AbacatePay's event payload is not the source of
-truth, its API is. Both paths call `GET /transparents/check?id=<charge_id>` with the
-API key and mark the row paid only on `PAID`, expired on `EXPIRED` or `CANCELLED`:
-- `manipular` with `check` reconciles the caller's own pending row; the app polls it
-  every 3 s while the Pix panel is open.
-- `abacatepay-webhook` compares `?webhookSecret=` to `ABACATEPAY_WEBHOOK_SECRET` in
-  constant time, answers 401 on mismatch, and otherwise reconciles every pending row
-  with a charge. It ignores the body, so a duplicate or replayed event is harmless,
-  and it covers the player who closed the tab after paying.
-
-The status update is `where status = 'pending'`, so reconciling twice is a no-op.
+**Deciding (R1.4, R1.7, R1.8).** `confirm_manipulation(id)` and
+`reject_manipulation(id)` are `security definer`, raise unless `is_admin()`, and move
+only a `pending` row, to `paid` (with `paid_at`) or `rejected`, recording
+`decided_by = current_player_id()`. `pending_manipulations()` returns `id, player name,
+created_at` of every pending row to an admin, and nothing to anyone else.
 
 **Row-level security (R1.8).** `authenticated` may select only rows where
-`player_id = current_player_id()` and has no insert, update or delete; writes go
-through `start_manipulation()` or the service role. `anon` gets nothing.
+`player_id = current_player_id()` and has no insert, update or delete; every write goes
+through the three functions. `anon` gets nothing.
 
-**Manipulated ranking (R2.1–R2.4).** `manipulated_ranking()` is `security definer`,
-empty for a non-player, returning `player_id, name, average, manipulated`, where
-`average` is `round(coalesce(avg(rating), 0) + 3, 1)` for a manipulated player and the
-official average otherwise, ordered desc nulls last, then name. `ranking()` is
-untouched, so the official list and "Copiar" are unchanged (R2.4).
+**Waiting (R1.3, R1.9).** While the Pix panel is on screen the app re-reads the
+player's own row every 10 s; it shows "Manipulado" once an admin confirmed, and offers
+a new Pix once one was rejected.
 
-**Secrets.** `ABACATEPAY_API_KEY` and `ABACATEPAY_WEBHOOK_SECRET` are Supabase function
-secrets; `SUPABASE_URL`, `SUPABASE_ANON_KEY` and `SUPABASE_SERVICE_ROLE_KEY` are
-provided by the platform. A Dev Mode key gives simulated payments; switching to real
-money is swapping the key and re-registering the webhook in production.
+**Manipulated ranking (R2.1–R2.4).** `manipulated_ranking()` (from 0002) returns
+`player_id, name, average, manipulated`, where `average` is
+`round(coalesce(avg(rating), 0) + 3, 1)` for a manipulated player and the official
+average otherwise. `ranking()` is untouched, so the official list and "Copiar" are
+unchanged (R2.4).
 
 ## Risks
 
-- AbacatePay's per-event payload is not documented where we could read it; ignoring
-  the body and asking the API sidesteps that, at one extra HTTPS call per pending row.
-- The webhook secret travels in the URL, as AbacatePay designs it; it can show up in
-  Supabase's request logs. It only lets someone trigger a reconcile, which changes
-  nothing AbacatePay's API does not confirm.
-- The Edge Function glue (`index.ts`) is not type-checked or tested in CI: no Deno
-  there. It is kept to request parsing and wiring for that reason.
+- Payment is on trust: an admin could confirm without a payment, and a player could
+  claim one. Accepted for R$ 2 of banter; `decided_by` records who confirmed.
+- Not every bank shows the txid of a static Pix in the receiver's statement; the admin
+  then matches by the payer's name and the amount.

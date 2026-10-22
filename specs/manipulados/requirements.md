@@ -7,21 +7,23 @@ ci: wait
 
 ## Purpose
 
-A joke list, for the banter only. A player may pay a R$ 2,00 Pix through AbacatePay to
-appear 3 points higher in a separate "Manipulados" list built from the official
-ranking. The official ranking, its average ratings and "Copiar" never change.
+A joke list, for the banter only. A player may pay a R$ 2,00 Pix to the organizer's
+personal Pix key to appear 3 points higher in a separate "Manipulados" list built from
+the official ranking, once an admin confirms the payment. The official ranking, its
+average ratings and "Copiar" never change.
 
 ## R1 · Paying for a manipulation
 
-- **R1.1** The app shall show a "Manipular" button on the authenticated player's own row of the ranking, and on no other player's row.
-- **R1.2** When the player presses "Manipular", the backend shall create an AbacatePay Pix charge of R$ 2,00 for that player, and the app shall show its QR code and its copy-and-paste code.
-- **R1.3** While the player's manipulation is pending, the app shall check the payment every few seconds and, once it is paid, tell the player they are manipulated.
-- **R1.4** When AbacatePay reports a payment, the backend shall mark the manipulation paid only after AbacatePay's API, called with the secret API key, confirms the charge is `PAID`.
-- **R1.5** If a player who already has a paid manipulation asks for another one, then the backend shall refuse it and create no charge.
-- **R1.6** While the player has a pending manipulation whose charge has not expired, the backend shall return that same charge instead of creating a new one.
-- **R1.7** If a webhook call does not carry the configured webhook secret, then the backend shall reject it and change nothing.
-- **R1.8** The backend shall let no one but the backend itself create, change, or mark paid a manipulation; a player may read only their own.
+- **R1.1** Where a Pix key is configured, the app shall show a "Manipular" button on the authenticated player's own row of the ranking, and on no other player's row.
+- **R1.2** When the player presses "Manipular", the backend shall open a pending manipulation for that player, and the app shall show a static Pix of R$ 2,00 to the configured key as a QR code and a copy-and-paste code, carrying the manipulation's code.
+- **R1.3** While the player's manipulation is pending, the app shall tell the player it awaits an admin's confirmation and, once it is confirmed, tell the player they are manipulated.
+- **R1.4** When an admin confirms a pending manipulation, the backend shall mark it paid and record which admin confirmed it.
+- **R1.5** If a player who already has a paid manipulation asks for another one, then the backend shall refuse it.
+- **R1.6** While the player has a pending manipulation, the backend shall return that same manipulation instead of opening a new one.
+- **R1.7** When an admin rejects a pending manipulation, the backend shall mark it rejected, so the player may open a new one.
+- **R1.8** If anyone but an admin attempts to confirm or reject a manipulation, then the backend shall reject the operation; a player may only open and read their own manipulation.
 - **R1.9** While the player has a paid manipulation, the app shall show "Manipulado" in place of the "Manipular" button.
+- **R1.10** While the authenticated player is an admin, the app shall list the pending manipulations with each player's name and manipulation code, offering to confirm or reject each.
 
 ## R2 · The Manipulados list
 
@@ -32,6 +34,6 @@ ranking. The official ranking, its average ratings and "Copiar" never change.
 
 ## Out of scope
 
-- Refunds, disputes, and paying for someone else.
-- Card or boleto payments.
+- Confirming payments automatically: there is no payment gateway (adr:0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin).
+- Refunds, and paying for someone else.
 - More than one manipulation per player: the bonus is +3, once.

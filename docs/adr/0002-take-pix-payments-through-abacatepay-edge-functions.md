@@ -1,5 +1,6 @@
 ---
-status: accepted
+status: superseded
+superseded-by: 0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin
 ---
 
 # 0002 · Take Pix payments through AbacatePay, behind Supabase Edge Functions
