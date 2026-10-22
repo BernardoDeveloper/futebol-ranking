@@ -21,15 +21,12 @@ export interface Database {
         Row: {
           id: string;
           player_id: string;
-          status: 'pending' | 'paid' | 'expired';
-          charge_id: string | null;
-          br_code: string | null;
-          qr_code: string | null;
-          expires_at: string | null;
+          status: 'pending' | 'paid' | 'rejected';
           created_at: string;
           paid_at: string | null;
+          decided_by: string | null;
         };
-        // Written only by the Edge Functions, with the service role.
+        // Written only through start_manipulation(), confirm_manipulation() and reject_manipulation().
         Insert: never;
         Update: never;
         Relationships: [];
@@ -40,6 +37,22 @@ export interface Database {
       ranking: {
         Args: Empty;
         Returns: { player_id: string; name: string; average: number | null; ratings_count: number }[];
+      };
+      start_manipulation: {
+        Args: Empty;
+        Returns: Database['public']['Tables']['manipulations']['Row'];
+      };
+      confirm_manipulation: {
+        Args: { manipulation_id: string };
+        Returns: undefined;
+      };
+      reject_manipulation: {
+        Args: { manipulation_id: string };
+        Returns: undefined;
+      };
+      pending_manipulations: {
+        Args: Empty;
+        Returns: { id: string; name: string; created_at: string }[];
       };
       manipulated_ranking: {
         Args: Empty;

@@ -1,5 +1,5 @@
 import { vi } from 'vitest';
-import type { Api, Manipulation, Player } from '../src/api';
+import type { Api, Manipulation, PendingManipulation, Player } from '../src/api';
 import type { ManipulatedRow, RankingRow } from '../src/ranking';
 
 /** An in-memory Api for view tests; every method is a spy. */
@@ -13,6 +13,7 @@ export function fakeApi(
     /** What manipulate() returns, and checkManipulation() returns in turn, one reply per call. */
     manipulation?: Manipulation;
     checks?: Manipulation[];
+    pending?: PendingManipulation[];
   } = {},
 ) {
   let listener: ((email: string | null) => void) | undefined;
@@ -41,6 +42,9 @@ export function fakeApi(
     checkManipulation: vi.fn(() => Promise.resolve<Manipulation>(state.checks?.shift() ?? { status: 'none' })),
     isManipulated: vi.fn(() => Promise.resolve(state.isManipulated ?? false)),
     manipulatedRanking: vi.fn(() => Promise.resolve(state.manipulated ?? [])),
+    pendingManipulations: vi.fn(() => Promise.resolve([...(state.pending ?? [])])),
+    confirmManipulation: vi.fn((_id: string) => Promise.resolve()),
+    rejectManipulation: vi.fn((_id: string) => Promise.resolve()),
   } satisfies Api;
   return { api, signIn: (email: string | null) => listener?.(email) };
 }

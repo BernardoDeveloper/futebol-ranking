@@ -9,11 +9,15 @@ export interface Player {
   is_admin: boolean;
 }
 
-/** The player's manipulation, as the manipular Edge Function reports it. */
-export type Manipulation =
-  | { status: 'none' }
-  | { status: 'paid' }
-  | { status: 'pending'; brCode: string; qrCode: string; expiresAt: string };
+/** The signed-in player's manipulation: none (or rejected), waiting for an admin, or paid. */
+export type Manipulation = { status: 'none' } | { status: 'paid' } | { status: 'pending'; id: string };
+
+/** A manipulation waiting for an admin to find its Pix. */
+export interface PendingManipulation {
+  id: string;
+  name: string;
+  created_at: string;
+}
 
 /** Everything the views ask of the backend. Authorization is the database's job, not this layer's. */
 export interface Api {
@@ -31,13 +35,17 @@ export interface Api {
   /** Deletes the rating, so it no longer counts toward the rated player's average. */
   clearRating(raterId: string, ratedId: string): Promise<void>;
   ranking(): Promise<RankingRow[]>;
-  /** Opens the signed-in player's R$ 2,00 Pix, or returns the one still pending. */
+  /** Opens the signed-in player's manipulation, or returns the one still pending. */
   manipulate(): Promise<Manipulation>;
-  /** Asks AbacatePay, through the backend, whether the pending Pix was paid. */
+  /** Re-reads the signed-in player's manipulation, to see whether an admin decided it. */
   checkManipulation(): Promise<Manipulation>;
   /** Whether the signed-in player has a paid manipulation. */
   isManipulated(): Promise<boolean>;
   manipulatedRanking(): Promise<ManipulatedRow[]>;
+  /** For admins; empty for anyone else. */
+  pendingManipulations(): Promise<PendingManipulation[]>;
+  confirmManipulation(id: string): Promise<void>;
+  rejectManipulation(id: string): Promise<void>;
 }
 
 interface ErrorLike {
@@ -63,36 +71,11 @@ export function addPlayerError(error: ErrorLike): string {
   return `Não foi possível cadastrar: ${error.message}`;
 }
 
-const PNG_DATA_URL = 'data:image/png;base64,';
-
-/** Reads the manipular function's reply; the QR code becomes an img src, so only a PNG data URL passes. */
-export function parseManipulation(data: unknown): Manipulation {
-  const reply = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
-  if (reply.status === 'none' || reply.status === 'paid') return { status: reply.status };
-  const { brCode, qrCode, expiresAt } = reply;
-  if (
-    reply.status === 'pending' &&
-    typeof brCode === 'string' &&
-    typeof qrCode === 'string' &&
-    qrCode.startsWith(PNG_DATA_URL) &&
-    typeof expiresAt === 'string'
-  ) {
-    return { status: 'pending', brCode, qrCode, expiresAt };
-  }
-  throw new Error('Resposta inesperada do servidor de pagamento.');
-}
-
 function check(error: ErrorLike | null, describe: (e: ErrorLike) => string = (e) => e.message): void {
   if (error) throw new Error(describe(error));
 }
 
 export function supabaseApi(client: SupabaseClient<Database>): Api {
-  async function manipular(action: 'start' | 'check', failure: string): Promise<Manipulation> {
-    const reply: { data: unknown; error: unknown } = await client.functions.invoke<unknown>('manipular', { body: { action } });
-    if (reply.error) throw new Error(failure);
-    return parseManipulation(reply.data);
-  }
-
   return {
     async requestCode(email) {
       const { error } = await client.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
@@ -147,11 +130,18 @@ export function supabaseApi(client: SupabaseClient<Database>): Api {
       check(error);
       return data ?? [];
     },
-    manipulate() {
-      return manipular('start', 'Não foi possível gerar o Pix. Tente de novo.');
+    async manipulate() {
+      const { data, error } = await client.rpc('start_manipulation');
+      if (error && /already manipulated/.test(error.message)) return { status: 'paid' };
+      check(error);
+      if (!data) throw new Error('Não foi possível gerar o Pix. Tente de novo.');
+      return data.status === 'pending' ? { status: 'pending', id: data.id } : { status: 'paid' };
     },
-    checkManipulation() {
-      return manipular('check', 'Não foi possível verificar o pagamento.');
+    async checkManipulation() {
+      const { data, error } = await client.from('manipulations').select('id, status').neq('status', 'rejected').maybeSingle();
+      check(error);
+      if (!data) return { status: 'none' };
+      return data.status === 'pending' ? { status: 'pending', id: data.id } : { status: 'paid' };
     },
     async isManipulated() {
       const { data, error } = await client.from('manipulations').select('id').eq('status', 'paid').limit(1);
@@ -162,6 +152,19 @@ export function supabaseApi(client: SupabaseClient<Database>): Api {
       const { data, error } = await client.rpc('manipulated_ranking');
       check(error);
       return data ?? [];
+    },
+    async pendingManipulations() {
+      const { data, error } = await client.rpc('pending_manipulations');
+      check(error);
+      return data ?? [];
+    },
+    async confirmManipulation(id) {
+      const { error } = await client.rpc('confirm_manipulation', { manipulation_id: id });
+      check(error);
+    },
+    async rejectManipulation(id) {
+      const { error } = await client.rpc('reject_manipulation', { manipulation_id: id });
+      check(error);
     },
   };
 }
