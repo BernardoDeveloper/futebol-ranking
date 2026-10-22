@@ -39,7 +39,7 @@ AbacatePay needs a CNPJ in production; adr:0003-take-manipulation-pix-on-a-perso
 - [x] 5.4 (Unit) Open, check, confirm, reject and list manipulations through the API — R1.2, R1.3, R1.4, R1.7, R1.10
   _Depends 5.1_
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_
-- [ ] 5.5 (Unit) Show the static Pix panel awaiting the admin on the ranking — R1.1, R1.2, R1.3, R1.9
+- [x] 5.5 (Unit) Show the static Pix panel awaiting the admin on the ranking — R1.1, R1.2, R1.3, R1.9
   _Depends 5.3, 5.4_
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_
 - [ ] 5.6 (Unit) List pending manipulations with confirm and reject in the Jogadores tab — R1.10

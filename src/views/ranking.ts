@@ -1,18 +1,27 @@
 import type { Api, Manipulation, Player } from '../api';
 import { copyText } from '../clipboard';
 import { h } from '../dom';
+import { manipulationTxid, pixCode, type PixReceiver } from '../pix';
+import { qrDataUrl } from '../qr';
 import { formatAverage, rankingText, type RankingRow } from '../ranking';
+
+/** R$ 2,00, in centavos. */
+export const MANIPULATION_PRICE = 200;
+
+export interface RankingOptions {
+  /** Where set, the player's own row offers "Manipular" (specs/manipulados R1.1). */
+  pix?: PixReceiver | undefined;
+  copy?: (text: string) => Promise<boolean>;
+  /** How often the open Pix panel re-reads whether an admin decided. */
+  pollMs?: number;
+}
 
 /**
  * The ranking table, who is at the game, and the "Copiar" button (R4.1–R4.5), plus
  * "Manipular" on the player's own row (specs/manipulados R1.1–R1.3, R1.9).
  */
-export function rankingView(
-  api: Api,
-  me: Player,
-  copy: (text: string) => Promise<boolean> = copyText,
-  pollMs = 3000,
-): HTMLElement {
+export function rankingView(api: Api, me: Player, options: RankingOptions = {}): HTMLElement {
+  const { pix: receiver, copy = copyText, pollMs = 10_000 } = options;
   const root = h('section', { class: 'card' }, h('p', { class: 'muted' }, 'Carregando…'));
   const pix = h('div', { class: 'pix' });
 
@@ -53,7 +62,9 @@ export function rankingView(
       }
       if (state.status === 'none') {
         button.disabled = false;
-        pix.replaceChildren(h('p', { class: 'message' }, 'O Pix expirou. Toque em Manipular para gerar outro.'));
+        pix.replaceChildren(
+          h('p', { class: 'message' }, 'Um admin não encontrou seu Pix. Toque em Manipular para tentar de novo.'),
+        );
         return;
       }
       if (waiting) {
@@ -61,27 +72,42 @@ export function rankingView(
         setTimeout(poll, pollMs);
         return;
       }
+      if (!receiver) return;
+      const txid = manipulationTxid(state.id);
+      let brCode: string;
+      try {
+        brCode = pixCode(receiver, { amount: MANIPULATION_PRICE, txid });
+      } catch (error) {
+        button.disabled = false;
+        pix.replaceChildren(h('p', { class: 'message error' }, `Chave Pix mal configurada: ${errorText(error)}`));
+        return;
+      }
       waiting = true;
-      const status = h('p', { class: 'status', role: 'status' }, 'Aguardando pagamento…');
-      const code = h('textarea', { readonly: true, rows: '3', 'aria-label': 'Pix copia e cola' }, state.brCode);
+      const status = h('p', { class: 'status', role: 'status' }, 'Aguardando a confirmação de um admin…');
+      const code = h('textarea', { readonly: true, rows: '3', 'aria-label': 'Pix copia e cola' }, brCode);
       pix.replaceChildren(
         h('h3', {}, 'Manipular por R$ 2,00'),
-        h('p', { class: 'muted' }, 'Pague o Pix e você sobe 3 pontos na lista Manipulados. Só pela resenha: o ranking oficial e o Copiar não mudam.'),
-        h('img', { src: state.qrCode, alt: 'QR code do Pix', width: '200', height: '200' }),
+        h(
+          'p',
+          { class: 'muted' },
+          'Pague o Pix abaixo. Quando um admin confirmar o pagamento, você sobe 3 pontos na lista Manipulados. Só pela resenha: o ranking oficial e o Copiar não mudam.',
+        ),
+        h('img', { src: qrDataUrl(brCode), alt: 'QR code do Pix', width: '200', height: '200' }),
         code,
         h(
           'button',
           {
             type: 'button',
             onclick: () => {
-              void copy(state.brCode).then((ok) => {
-                if (ok) status.textContent = 'Código copiado. Aguardando pagamento…';
+              void copy(brCode).then((ok) => {
+                if (ok) status.textContent = 'Código copiado. Aguardando a confirmação de um admin…';
                 else code.select();
               });
             },
           },
           'Copiar código Pix',
         ),
+        h('p', { class: 'muted' }, 'Código da manipulação: ', h('strong', {}, txid)),
         status,
       );
       setTimeout(poll, pollMs);
@@ -180,7 +206,7 @@ export function rankingView(
               'td',
               {},
               row.name,
-              row.player_id === me.id ? (manipulated ? manipulatedTag() : manipulateButton()) : null,
+              row.player_id !== me.id ? null : manipulated ? manipulatedTag() : receiver ? manipulateButton() : null,
             ),
             h('td', { class: 'num' }, formatAverage(row.average)),
             h('td', { class: 'num' }, row.ratings_count),

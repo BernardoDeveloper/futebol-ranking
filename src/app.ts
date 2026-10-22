@@ -33,7 +33,7 @@ export function mountApp(root: HTMLElement, api: Api, config: Config): void {
 
   function shell(me: Player): HTMLElement {
     const tabs: Tab[] = [
-      { label: 'Ranking', view: () => rankingView(api, me) },
+      { label: 'Ranking', view: () => rankingView(api, me, { pix: config.pix }) },
       { label: 'Avaliar', view: () => ratingsView(api, me) },
       { label: 'Manipulados', view: () => manipulatedView(api) },
     ];
