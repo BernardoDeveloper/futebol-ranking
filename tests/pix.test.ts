@@ -48,6 +48,11 @@ describe('pixCode', () => {
     expect(() => pixCode(receiver, { txid: 'A'.repeat(26) })).toThrow(/txid/);
   });
 
+  it('refuses a name or city with nothing left once accents and symbols are stripped', () => {
+    expect(() => pixCode({ ...receiver, name: '😀' }, { txid: '***' })).toThrow(/name/);
+    expect(() => pixCode({ ...receiver, city: ' ' }, { txid: '***' })).toThrow(/city/);
+  });
+
   it('refuses an amount that is not a positive whole number of centavos', () => {
     expect(() => pixCode(receiver, { amount: 0, txid: '***' })).toThrow(/amount/);
     expect(() => pixCode(receiver, { amount: 2.5, txid: '***' })).toThrow(/amount/);

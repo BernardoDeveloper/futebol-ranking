@@ -31,13 +31,18 @@ const SUPABASE_STUB = `
   alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
 
-export async function freshDatabase({ migrate = true } = {}): Promise<PGlite> {
+const migrations = (): string[] => readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort();
+
+export async function applyMigration(db: PGlite, file: string): Promise<void> {
+  await db.exec(readFileSync(new URL(file, MIGRATIONS), 'utf8'));
+}
+
+/** Every migration, or with `before`, only those that sort before that file, to test an upgrade. */
+export async function freshDatabase({ migrate = true, before }: { migrate?: boolean; before?: string } = {}): Promise<PGlite> {
   const db = new PGlite();
   await db.exec(SUPABASE_STUB);
   if (migrate) {
-    for (const file of readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort()) {
-      await db.exec(readFileSync(new URL(file, MIGRATIONS), 'utf8'));
-    }
+    for (const file of migrations().filter((f) => before === undefined || f < before)) await applyMigration(db, file);
   }
   return db;
 }
@@ -85,5 +90,3 @@ export async function as<T>(
 export const player = (email: string): Session => ({ role: 'authenticated', email, confirmed: true });
 export const unconfirmed = (email: string): Session => ({ role: 'authenticated', email, confirmed: false });
 export const anon: Session = { role: 'anon' };
-/** The Edge Functions' service-role key. */
-export const service: Session = { role: 'service_role' };

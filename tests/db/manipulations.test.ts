@@ -1,6 +1,6 @@
 import type { PGlite } from '@electric-sql/pglite';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { anon, as, freshDatabase, player, unconfirmed } from './harness';
+import { anon, applyMigration, as, freshDatabase, player, unconfirmed } from './harness';
 
 const ADMIN = 'admin@acme.com';
 const ANA = 'ana@acme.com';
@@ -223,5 +223,38 @@ describe('manipulated_ranking()', () => {
   it('R1.8 returns nothing to a session that is not a registered player', async () => {
     await manipulate(ANA);
     expect(await manipulatedRanking(STRANGER)).toEqual([]);
+  });
+});
+
+describe('0003 over a database where 0002 already ran', () => {
+  it('upgrades every 0002 history: expired retries, a pending charge, and a paid one', async () => {
+    const old = await freshDatabase({ before: '0003' });
+    const seeded = await old.query<{ id: string; email: string }>(
+      `insert into players (name, email) values ('Ana', $1), ('Bruno', $2), ('Caio', $3), ('Duda', 'duda@acme.com')
+       returning id, email`,
+      [ANA, BRUNO, CAIO],
+    );
+    const pid = Object.fromEntries(seeded.rows.map((r) => [r.email, r.id]));
+    await old.query(
+      `insert into manipulations (player_id, status, charge_id, expires_at) values
+         ($1, 'expired', 'c1', now()), ($1, 'pending', 'c2', now()),
+         ($2, 'expired', 'c3', now()), ($2, 'paid', 'c4', now()),
+         ($3, 'expired', 'c5', now()), ($3, 'expired', 'c6', now()),
+         ($4, 'pending', null, null)`,
+      [pid[ANA], pid[BRUNO], pid[CAIO], pid['duda@acme.com']],
+    );
+    await applyMigration(old, '0003_manual_pix.sql');
+    const r = await old.query<{ name: string; status: string }>(
+      `select p.name, m.status from manipulations m join players p on p.id = m.player_id order by p.name, m.status`,
+    );
+    expect(r.rows).toEqual([
+      { name: 'Ana', status: 'pending' },
+      { name: 'Ana', status: 'rejected' },
+      { name: 'Bruno', status: 'paid' },
+      { name: 'Bruno', status: 'rejected' },
+      { name: 'Caio', status: 'rejected' },
+      { name: 'Caio', status: 'rejected' },
+      { name: 'Duda', status: 'pending' },
+    ]);
   });
 });
