@@ -14,7 +14,7 @@
 
 ## 3 · App
 
-- [ ] 3.1 (Unit) Add manipulate, checkManipulation, myManipulation and manipulatedRanking to the API — R1.2, R1.3, R1.9, R2.1
+- [x] 3.1 (Unit) Add manipulate, checkManipulation, myManipulation and manipulatedRanking to the API — R1.2, R1.3, R1.9, R2.1
   _Depends 1.1_
 - [ ] 3.2 (Unit) Show "Manipular" on the player's own ranking row, the Pix panel with polling, and "Manipulado" once paid — R1.1, R1.2, R1.3, R1.9
   _Depends 3.1_

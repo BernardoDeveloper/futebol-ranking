@@ -1,9 +1,20 @@
 import { vi } from 'vitest';
-import type { Api, Player } from '../src/api';
-import type { RankingRow } from '../src/ranking';
+import type { Api, Manipulation, Player } from '../src/api';
+import type { ManipulatedRow, RankingRow } from '../src/ranking';
 
 /** An in-memory Api for view tests; every method is a spy. */
-export function fakeApi(state: { players?: Player[]; ratings?: Map<string, number>; ranking?: RankingRow[] } = {}) {
+export function fakeApi(
+  state: {
+    players?: Player[];
+    ratings?: Map<string, number>;
+    ranking?: RankingRow[];
+    manipulated?: ManipulatedRow[];
+    isManipulated?: boolean;
+    /** What manipulate() returns, and checkManipulation() returns in turn, one reply per call. */
+    manipulation?: Manipulation;
+    checks?: Manipulation[];
+  } = {},
+) {
   let listener: ((email: string | null) => void) | undefined;
   const players = state.players ?? [];
   const api = {
@@ -26,6 +37,10 @@ export function fakeApi(state: { players?: Player[]; ratings?: Map<string, numbe
     rate: vi.fn((_rater: string, _rated: string, _value: number) => Promise.resolve()),
     clearRating: vi.fn((_rater: string, _rated: string) => Promise.resolve()),
     ranking: vi.fn(() => Promise.resolve(state.ranking ?? [])),
+    manipulate: vi.fn(() => Promise.resolve<Manipulation>(state.manipulation ?? { status: 'none' })),
+    checkManipulation: vi.fn(() => Promise.resolve<Manipulation>(state.checks?.shift() ?? { status: 'none' })),
+    isManipulated: vi.fn(() => Promise.resolve(state.isManipulated ?? false)),
+    manipulatedRanking: vi.fn(() => Promise.resolve(state.manipulated ?? [])),
   } satisfies Api;
   return { api, signIn: (email: string | null) => listener?.(email) };
 }

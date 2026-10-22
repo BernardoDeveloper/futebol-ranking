@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { describe, expect, it } from 'vitest';
-import { addPlayerError, requestCodeError, supabaseApi } from '../src/api';
+import { addPlayerError, parseManipulation, requestCodeError, supabaseApi } from '../src/api';
 import type { Database } from '../src/database';
 
 interface Call {
@@ -103,6 +103,52 @@ describe('supabaseApi', () => {
   it('R2.4 explains a duplicate email when registering', async () => {
     const { client } = fakeClient({ error: { message: 'duplicate key', code: '23505' } });
     await expect(supabaseApi(client).addPlayer('Ana', 'ana@acme.com')).rejects.toThrow('Já existe um jogador com este email.');
+  });
+});
+
+describe('manipulations', () => {
+  const QR = 'data:image/png;base64,AA==';
+  const pending = { status: 'pending', brCode: '000201…', qrCode: QR, expiresAt: '2026-10-22T13:00:00Z' };
+
+  it('R1.2 asks the manipular function to start a manipulation', async () => {
+    const { client, calls } = fakeClient({ data: pending });
+    expect(await supabaseApi(client).manipulate()).toEqual(pending);
+    expect(calls).toContainEqual({ path: 'client.functions.invoke', args: ['manipular', { body: { action: 'start' } }] });
+  });
+
+  it('R1.3 asks the manipular function to check the payment', async () => {
+    const { client, calls } = fakeClient({ data: { status: 'paid' } });
+    expect(await supabaseApi(client).checkManipulation()).toEqual({ status: 'paid' });
+    expect(calls).toContainEqual({ path: 'client.functions.invoke', args: ['manipular', { body: { action: 'check' } }] });
+  });
+
+  it('R1.2 explains a failure to create the Pix', async () => {
+    const { client } = fakeClient({ error: { message: 'Edge Function returned a non-2xx status code' } });
+    await expect(supabaseApi(client).manipulate()).rejects.toThrow('Não foi possível gerar o Pix. Tente de novo.');
+  });
+
+  it('R1.9 reads whether the player has a paid manipulation', async () => {
+    const { client, calls } = fakeClient({ data: [{ id: 'm-1' }] });
+    expect(await supabaseApi(client).isManipulated()).toBe(true);
+    expect(calls).toContainEqual({ path: 'client.from', args: ['manipulations'] });
+    expect(calls).toContainEqual({ path: 'client.from.select.eq', args: ['status', 'paid'] });
+    expect(await supabaseApi(fakeClient({ data: [] }).client).isManipulated()).toBe(false);
+  });
+
+  it('R2.1 reads the Manipulados list from manipulated_ranking()', async () => {
+    const rows = [{ player_id: 'a', name: 'Ana', average: 8, manipulated: true }];
+    const { client, calls } = fakeClient({ data: rows });
+    expect(await supabaseApi(client).manipulatedRanking()).toEqual(rows);
+    expect(calls).toContainEqual({ path: 'client.rpc', args: ['manipulated_ranking'] });
+  });
+
+  it('parseManipulation accepts the three replies and refuses anything else', () => {
+    expect(parseManipulation({ status: 'none' })).toEqual({ status: 'none' });
+    expect(parseManipulation({ status: 'paid', extra: 1 })).toEqual({ status: 'paid' });
+    expect(parseManipulation(pending)).toEqual(pending);
+    expect(() => parseManipulation({ ...pending, qrCode: 'https://evil.example/x.png' })).toThrow(/inesperada/);
+    expect(() => parseManipulation({ status: 'pending' })).toThrow(/inesperada/);
+    expect(() => parseManipulation(null)).toThrow(/inesperada/);
   });
 });
 

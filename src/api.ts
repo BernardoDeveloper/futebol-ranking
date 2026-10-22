@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database';
-import type { RankingRow } from './ranking';
+import type { ManipulatedRow, RankingRow } from './ranking';
 
 export interface Player {
   id: string;
@@ -8,6 +8,12 @@ export interface Player {
   email: string;
   is_admin: boolean;
 }
+
+/** The player's manipulation, as the manipular Edge Function reports it. */
+export type Manipulation =
+  | { status: 'none' }
+  | { status: 'paid' }
+  | { status: 'pending'; brCode: string; qrCode: string; expiresAt: string };
 
 /** Everything the views ask of the backend. Authorization is the database's job, not this layer's. */
 export interface Api {
@@ -25,6 +31,13 @@ export interface Api {
   /** Deletes the rating, so it no longer counts toward the rated player's average. */
   clearRating(raterId: string, ratedId: string): Promise<void>;
   ranking(): Promise<RankingRow[]>;
+  /** Opens the signed-in player's R$ 2,00 Pix, or returns the one still pending. */
+  manipulate(): Promise<Manipulation>;
+  /** Asks AbacatePay, through the backend, whether the pending Pix was paid. */
+  checkManipulation(): Promise<Manipulation>;
+  /** Whether the signed-in player has a paid manipulation. */
+  isManipulated(): Promise<boolean>;
+  manipulatedRanking(): Promise<ManipulatedRow[]>;
 }
 
 interface ErrorLike {
@@ -50,11 +63,36 @@ export function addPlayerError(error: ErrorLike): string {
   return `Não foi possível cadastrar: ${error.message}`;
 }
 
+const PNG_DATA_URL = 'data:image/png;base64,';
+
+/** Reads the manipular function's reply; the QR code becomes an img src, so only a PNG data URL passes. */
+export function parseManipulation(data: unknown): Manipulation {
+  const reply = (typeof data === 'object' && data !== null ? data : {}) as Record<string, unknown>;
+  if (reply.status === 'none' || reply.status === 'paid') return { status: reply.status };
+  const { brCode, qrCode, expiresAt } = reply;
+  if (
+    reply.status === 'pending' &&
+    typeof brCode === 'string' &&
+    typeof qrCode === 'string' &&
+    qrCode.startsWith(PNG_DATA_URL) &&
+    typeof expiresAt === 'string'
+  ) {
+    return { status: 'pending', brCode, qrCode, expiresAt };
+  }
+  throw new Error('Resposta inesperada do servidor de pagamento.');
+}
+
 function check(error: ErrorLike | null, describe: (e: ErrorLike) => string = (e) => e.message): void {
   if (error) throw new Error(describe(error));
 }
 
 export function supabaseApi(client: SupabaseClient<Database>): Api {
+  async function manipular(action: 'start' | 'check', failure: string): Promise<Manipulation> {
+    const reply: { data: unknown; error: unknown } = await client.functions.invoke<unknown>('manipular', { body: { action } });
+    if (reply.error) throw new Error(failure);
+    return parseManipulation(reply.data);
+  }
+
   return {
     async requestCode(email) {
       const { error } = await client.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
@@ -106,6 +144,22 @@ export function supabaseApi(client: SupabaseClient<Database>): Api {
     },
     async ranking() {
       const { data, error } = await client.rpc('ranking');
+      check(error);
+      return data ?? [];
+    },
+    manipulate() {
+      return manipular('start', 'Não foi possível gerar o Pix. Tente de novo.');
+    },
+    checkManipulation() {
+      return manipular('check', 'Não foi possível verificar o pagamento.');
+    },
+    async isManipulated() {
+      const { data, error } = await client.from('manipulations').select('id').eq('status', 'paid').limit(1);
+      check(error);
+      return (data ?? []).length > 0;
+    },
+    async manipulatedRanking() {
+      const { data, error } = await client.rpc('manipulated_ranking');
       check(error);
       return data ?? [];
     },

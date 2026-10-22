@@ -7,6 +7,15 @@ export interface RankingRow {
   ratings_count: number;
 }
 
+/** One line of the Manipulados list, as returned by manipulated_ranking(). */
+export interface ManipulatedRow {
+  player_id: string;
+  name: string;
+  /** The manipulated rating: the average rating, plus 3 when `manipulated`. */
+  average: RankingRow['average'];
+  manipulated: boolean;
+}
+
 export const NO_RATING = 'sem nota';
 
 export function formatAverage(average: RankingRow['average']): string {
