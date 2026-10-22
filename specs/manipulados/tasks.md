@@ -33,7 +33,7 @@ AbacatePay needs a CNPJ in production; adr:0003-take-manipulation-pix-on-a-perso
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_
 - [x] 5.2 (TDD) Build the static Pix copy-and-paste code for R$ 2,00 with its CRC — R1.2
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_
-- [ ] 5.3 (Unit) Read the Pix key, name and city from the config and draw the Pix QR code — R1.1, R1.2
+- [x] 5.3 (Unit) Read the Pix key, name and city from the config and draw the Pix QR code — R1.1, R1.2
   _Depends 5.2_
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_
 - [ ] 5.4 (Unit) Open, check, confirm, reject and list manipulations through the API — R1.2, R1.3, R1.4, R1.7, R1.10

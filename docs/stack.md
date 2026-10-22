@@ -7,6 +7,7 @@ decision, never something adopted silently.
 
 - **@supabase/supabase-js** — client for Supabase email-OTP auth and Postgres, the whole backend (adr:0001-use-supabase-for-auth-and-data).
 - **GitHub Pages** — free static hosting; the build output is plain files.
+- **qrcode-generator** — draws the Manipulados Pix QR code in the browser as an image data URL; no dependencies, no canvas (adr:0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin).
 - **Supabase Edge Functions** (Deno) — the only server code: they hold the AbacatePay API key the browser must never see (adr:0002-take-pix-payments-through-abacatepay-edge-functions).
 - **AbacatePay** — Pix charges for the Manipulados joke list, with a Dev Mode for simulated payments (adr:0002-take-pix-payments-through-abacatepay-edge-functions).
 

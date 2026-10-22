@@ -12,7 +12,7 @@ import { fakeApi, settle } from './fake-api';
 const ana: Player = { id: 'a', name: 'Ana', email: 'ana@acme.com', is_admin: true };
 const bruno: Player = { id: 'b', name: 'Bruno', email: 'bruno@acme.com', is_admin: false };
 const caio: Player = { id: 'c', name: 'Caio', email: 'caio@acme.com', is_admin: false };
-const config: Config = { supabaseUrl: 'u', supabaseAnonKey: 'k', allowedDomain: 'acme.com' };
+const config: Config = { supabaseUrl: 'u', supabaseAnonKey: 'k', allowedDomain: 'acme.com', pix: undefined };
 
 const ranking: RankingRow[] = [
   { player_id: 'a', name: 'Ana', average: 8.7, ratings_count: 3 },

@@ -7,7 +7,7 @@ import { fakeApi, settle } from './fake-api';
 
 const admin: Player = { id: 'a', name: 'Ana', email: 'ana@acme.com', is_admin: true };
 const bruno: Player = { id: 'b', name: 'Bruno', email: 'bruno@acme.com', is_admin: false };
-const config: Config = { supabaseUrl: 'u', supabaseAnonKey: 'k', allowedDomain: undefined };
+const config: Config = { supabaseUrl: 'u', supabaseAnonKey: 'k', allowedDomain: undefined, pix: undefined };
 
 const tabs = (root: HTMLElement): string[] => [...root.querySelectorAll('[role="tab"]')].map((t) => t.textContent);
 
