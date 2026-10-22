@@ -6,7 +6,7 @@
 
 ## 2 · Edge Functions
 
-- [ ] 2.1 (Unit) Write the AbacatePay client: create a R$ 2,00 Pix and check a charge's status — R1.2, R1.4
+- [x] 2.1 (Unit) Write the AbacatePay client: create a R$ 2,00 Pix and check a charge's status — R1.2, R1.4
 - [ ] 2.2 (TDD) Write the manipulation flow: start, check the player's own charge, reconcile every pending charge — R1.2, R1.4, R1.5, R1.6
   _Depends 1.1, 2.1_
 - [ ] 2.3 (Unit) Write the HTTP helpers and the manipular and abacatepay-webhook functions, rejecting a webhook without the secret — R1.2, R1.3, R1.7
