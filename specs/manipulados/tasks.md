@@ -2,7 +2,7 @@
 
 ## 1 · Database
 
-- [ ] 1.1 (TDD) Write migration 0002: manipulations table, RLS, start_manipulation(), manipulated_ranking(), and run every migration in the PGlite harness — R1.5, R1.6, R1.8, R2.1, R2.2, R2.4
+- [x] 1.1 (TDD) Write migration 0002: manipulations table, RLS, start_manipulation(), manipulated_ranking(), and run every migration in the PGlite harness — R1.5, R1.6, R1.8, R2.1, R2.2, R2.4
 
 ## 2 · Edge Functions
 
