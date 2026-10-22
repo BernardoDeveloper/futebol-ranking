@@ -8,3 +8,6 @@ One canonical term per concept, and the synonyms nobody should use for it.
 - **average rating** — the mean of the ratings a player received, rounded to one decimal.
 - **ranking** — every player ordered by average rating, highest first, unrated players last.
 - **access code** — the one-time code emailed at login. Avoid: OTP code, token
+- **manipulation** — a player's R$ 2,00 Pix to the organizer's key which, once an admin confirms it, adds 3 to their average rating in the Manipulados list, and nowhere else; at most one per player. Avoid: boost, bribe
+- **manipulated rating** — the average rating plus 3 for a player with a confirmed manipulation, shown only in the Manipulados list.
+- **manipulation code** — `MANIP` and the first 8 hex digits of a manipulation's id, sent as the Pix txid so an admin can find the payment.

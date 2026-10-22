@@ -7,6 +7,7 @@ decision, never something adopted silently.
 
 - **@supabase/supabase-js** — client for Supabase email-OTP auth and Postgres, the whole backend (adr:0001-use-supabase-for-auth-and-data).
 - **GitHub Pages** — free static hosting; the build output is plain files.
+- **qrcode-generator** — draws the Manipulados Pix QR code in the browser as an image data URL; no dependencies, no canvas (adr:0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin).
 
 ## Development
 

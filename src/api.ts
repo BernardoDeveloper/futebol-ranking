@@ -1,12 +1,22 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from './database';
-import type { RankingRow } from './ranking';
+import type { ManipulatedRow, RankingRow } from './ranking';
 
 export interface Player {
   id: string;
   name: string;
   email: string;
   is_admin: boolean;
+}
+
+/** The signed-in player's manipulation: none (or rejected), waiting for an admin, or paid. */
+export type Manipulation = { status: 'none' } | { status: 'paid' } | { status: 'pending'; id: string };
+
+/** A manipulation waiting for an admin to find its Pix. */
+export interface PendingManipulation {
+  id: string;
+  name: string;
+  created_at: string;
 }
 
 /** Everything the views ask of the backend. Authorization is the database's job, not this layer's. */
@@ -25,6 +35,17 @@ export interface Api {
   /** Deletes the rating, so it no longer counts toward the rated player's average. */
   clearRating(raterId: string, ratedId: string): Promise<void>;
   ranking(): Promise<RankingRow[]>;
+  /** Opens the signed-in player's manipulation, or returns the one still pending. */
+  manipulate(): Promise<Manipulation>;
+  /** Re-reads the signed-in player's manipulation, to see whether an admin decided it. */
+  checkManipulation(): Promise<Manipulation>;
+  /** Whether the signed-in player has a paid manipulation. */
+  isManipulated(): Promise<boolean>;
+  manipulatedRanking(): Promise<ManipulatedRow[]>;
+  /** For admins; empty for anyone else. */
+  pendingManipulations(): Promise<PendingManipulation[]>;
+  confirmManipulation(id: string): Promise<void>;
+  rejectManipulation(id: string): Promise<void>;
 }
 
 interface ErrorLike {
@@ -108,6 +129,42 @@ export function supabaseApi(client: SupabaseClient<Database>): Api {
       const { data, error } = await client.rpc('ranking');
       check(error);
       return data ?? [];
+    },
+    async manipulate() {
+      const { data, error } = await client.rpc('start_manipulation');
+      if (error && /already manipulated/.test(error.message)) return { status: 'paid' };
+      check(error);
+      if (!data) throw new Error('Não foi possível gerar o Pix. Tente de novo.');
+      return data.status === 'pending' ? { status: 'pending', id: data.id } : { status: 'paid' };
+    },
+    async checkManipulation() {
+      const { data, error } = await client.from('manipulations').select('id, status').neq('status', 'rejected').maybeSingle();
+      check(error);
+      if (!data) return { status: 'none' };
+      return data.status === 'pending' ? { status: 'pending', id: data.id } : { status: 'paid' };
+    },
+    async isManipulated() {
+      const { data, error } = await client.from('manipulations').select('id').eq('status', 'paid').limit(1);
+      check(error);
+      return (data ?? []).length > 0;
+    },
+    async manipulatedRanking() {
+      const { data, error } = await client.rpc('manipulated_ranking');
+      check(error);
+      return data ?? [];
+    },
+    async pendingManipulations() {
+      const { data, error } = await client.rpc('pending_manipulations');
+      check(error);
+      return data ?? [];
+    },
+    async confirmManipulation(id) {
+      const { error } = await client.rpc('confirm_manipulation', { manipulation_id: id });
+      check(error);
+    },
+    async rejectManipulation(id) {
+      const { error } = await client.rpc('reject_manipulation', { manipulation_id: id });
+      check(error);
     },
   };
 }

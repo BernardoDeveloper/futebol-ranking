@@ -71,6 +71,9 @@ on them.
 memory: it is not saved, and opening the ranking again starts with every player
 selected. Nothing reaches the database, so it needs no policy.
 
+**Manipular.** The ranking view also carries the "Manipular" button on the player's own
+row; it belongs to specs/manipulados/, and leaves `ranking()` and "Copiar" untouched.
+
 **Bootstrap.** The first admin is inserted by hand in the Supabase SQL editor; the
 README says how. After that, admins register everyone else from the app.
 

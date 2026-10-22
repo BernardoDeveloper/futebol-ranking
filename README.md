@@ -11,6 +11,11 @@ salva nota no nome de outro nem vê as notas individuais dos outros — só as m
 
 - Site estático no GitHub Pages; backend é o Supabase (plano grátis).
 - Spec: [`specs/ranking-jogadores/`](specs/ranking-jogadores/) · decisão: [`docs/adr/0001-use-supabase-for-auth-and-data.md`](docs/adr/0001-use-supabase-for-auth-and-data.md)
+- **Manipulados**, só pela resenha: na sua linha do ranking, **Manipular** mostra um Pix
+  de R$ 2,00 para a chave do organizador; quando um admin confirma o pagamento, você sobe
+  3 pontos na aba **Manipulados** (uma vez só). O ranking oficial e o Copiar não mudam.
+  Spec: [`specs/manipulados/`](specs/manipulados/) · decisão:
+  [`docs/adr/0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin.md`](docs/adr/0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin.md)
 
 ## Colocando no ar
 
@@ -56,6 +61,23 @@ salva nota no nome de outro nem vê as notas individuais dos outros — só as m
    - `VITE_ALLOWED_EMAIL_DOMAIN` — ex.: `suaempresa.com.br` (opcional; com ele o jogador
      digita só `bernardo.gsilva`)
 4. Cada push na `main` roda testes e lint, gera o site e publica.
+
+### 3. Manipulados (Pix na sua chave)
+
+1. **SQL Editor** → rode [`supabase/migrations/0002_manipulations.sql`](supabase/migrations/0002_manipulations.sql)
+   e depois [`supabase/migrations/0003_manual_pix.sql`](supabase/migrations/0003_manual_pix.sql).
+   Se a 0002 já rodou no projeto, rode só a 0003.
+2. **Settings → Secrets and variables → Actions → Variables**, crie:
+   - `VITE_PIX_KEY` — sua chave Pix; prefira uma **chave aleatória**, porque ela fica
+     pública no site (CPF só com dígitos, email ou telefone `+55...` também funcionam)
+   - `VITE_PIX_NAME` — seu nome como está no banco (até 25 letras, sem acento)
+   - `VITE_PIX_CITY` — sua cidade (até 15 letras, sem acento)
+
+   Sem as três, o botão **Manipular** não aparece. A chave é pública por natureza: é o
+   que quem paga digita.
+3. Quando alguém manipular, confira no extrato um Pix de R$ 2,00 com o código
+   `MANIP...` (ou o nome da pessoa) e, na aba **Jogadores**, toque em **Confirmar** — ou
+   **Recusar**, se o Pix não chegou. Fica registrado qual admin decidiu.
 
 ## Desenvolvimento
 

@@ -1,15 +1,16 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { PGlite, type Transaction } from '@electric-sql/pglite';
 
-const MIGRATION = new URL('../../supabase/migrations/0001_init.sql', import.meta.url);
+const MIGRATIONS = new URL('../../supabase/migrations/', import.meta.url);
 
-// The slice of Supabase's platform the migration relies on, defined the way Supabase
-// defines it: roles, the auth schema with the auth.users columns the migration reads,
+// The slice of Supabase's platform the migrations rely on, defined the way Supabase
+// defines it: roles (service_role bypasses row-level security), the auth schema with the auth.users columns the migration reads,
 // auth.jwt()/auth.uid() reading the request's claims, and the default grants Supabase
 // gives anon and authenticated on new objects in public.
 const SUPABASE_STUB = `
   create role anon nologin;
   create role authenticated nologin;
+  create role service_role nologin bypassrls;
   create schema auth;
   create table auth.users (
     id uuid primary key default gen_random_uuid(),
@@ -23,21 +24,33 @@ const SUPABASE_STUB = `
   create function auth.uid() returns uuid language sql stable as $$
     select nullif(auth.jwt() ->> 'sub', '')::uuid
   $$;
-  grant usage on schema auth to anon, authenticated;
-  grant usage on schema public to anon, authenticated;
-  alter default privileges in schema public grant all on tables to anon, authenticated;
-  alter default privileges in schema public grant all on functions to anon, authenticated;
-  alter default privileges in schema public grant all on sequences to anon, authenticated;
+  grant usage on schema auth to anon, authenticated, service_role;
+  grant usage on schema public to anon, authenticated, service_role;
+  alter default privileges in schema public grant all on tables to anon, authenticated, service_role;
+  alter default privileges in schema public grant all on functions to anon, authenticated, service_role;
+  alter default privileges in schema public grant all on sequences to anon, authenticated, service_role;
 `;
 
-export async function freshDatabase({ migrate = true } = {}): Promise<PGlite> {
+const migrations = (): string[] => readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort();
+
+export async function applyMigration(db: PGlite, file: string): Promise<void> {
+  await db.exec(readFileSync(new URL(file, MIGRATIONS), 'utf8'));
+}
+
+/** Every migration, or with `before`, only those that sort before that file, to test an upgrade. */
+export async function freshDatabase({ migrate = true, before }: { migrate?: boolean; before?: string } = {}): Promise<PGlite> {
   const db = new PGlite();
   await db.exec(SUPABASE_STUB);
-  if (migrate) await db.exec(readFileSync(MIGRATION, 'utf8'));
+  if (migrate) {
+    for (const file of migrations().filter((f) => before === undefined || f < before)) await applyMigration(db, file);
+  }
   return db;
 }
 
-type Session = { role: 'anon' } | { role: 'authenticated'; email: string; confirmed: boolean };
+type Session =
+  | { role: 'anon' }
+  | { role: 'service_role' }
+  | { role: 'authenticated'; email: string; confirmed: boolean };
 
 // The auth account a session belongs to, created on first use. Triggers are bypassed so
 // a test can hold an account the allowlist would refuse today, such as a removed player's.
@@ -65,7 +78,9 @@ export async function as<T>(
     const claims =
       session.role === 'anon'
         ? {}
-        : { role: session.role, email: session.email, sub: await accountId(tx, session.email, session.confirmed) };
+        : session.role === 'service_role'
+          ? { role: session.role }
+          : { role: session.role, email: session.email, sub: await accountId(tx, session.email, session.confirmed) };
     await tx.query(`select set_config('request.jwt.claims', $1, true)`, [JSON.stringify(claims)]);
     await tx.exec(`set local role ${session.role}`);
     return fn(tx);

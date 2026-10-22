@@ -106,6 +106,62 @@ describe('supabaseApi', () => {
   });
 });
 
+describe('manipulations', () => {
+  it('R1.2 opens a manipulation through start_manipulation()', async () => {
+    const { client, calls } = fakeClient({ data: { id: 'm-1', player_id: 'a', status: 'pending' } });
+    expect(await supabaseApi(client).manipulate()).toEqual({ status: 'pending', id: 'm-1' });
+    expect(calls).toContainEqual({ path: 'client.rpc', args: ['start_manipulation'] });
+  });
+
+  it('R1.5 reports a player already manipulated as paid', async () => {
+    const { client } = fakeClient({ error: { message: 'already manipulated', code: '23505' } });
+    expect(await supabaseApi(client).manipulate()).toEqual({ status: 'paid' });
+  });
+
+  it('passes on any other refusal', async () => {
+    const { client } = fakeClient({ error: { message: 'not a registered player', code: '42501' } });
+    await expect(supabaseApi(client).manipulate()).rejects.toThrow('not a registered player');
+  });
+
+  it('R1.3 re-reads the player\'s own manipulation, ignoring rejected ones', async () => {
+    const { client, calls } = fakeClient({ data: { id: 'm-1', status: 'paid' } });
+    expect(await supabaseApi(client).checkManipulation()).toEqual({ status: 'paid' });
+    expect(calls).toContainEqual({ path: 'client.from', args: ['manipulations'] });
+    expect(calls).toContainEqual({ path: 'client.from.select.neq', args: ['status', 'rejected'] });
+    expect(await supabaseApi(fakeClient({ data: { id: 'm-2', status: 'pending' } }).client).checkManipulation()).toEqual({
+      status: 'pending',
+      id: 'm-2',
+    });
+    expect(await supabaseApi(fakeClient({ data: null }).client).checkManipulation()).toEqual({ status: 'none' });
+  });
+
+  it('R1.9 reads whether the player has a paid manipulation', async () => {
+    const { client, calls } = fakeClient({ data: [{ id: 'm-1' }] });
+    expect(await supabaseApi(client).isManipulated()).toBe(true);
+    expect(calls).toContainEqual({ path: 'client.from.select.eq', args: ['status', 'paid'] });
+    expect(await supabaseApi(fakeClient({ data: [] }).client).isManipulated()).toBe(false);
+  });
+
+  it('R2.1 reads the Manipulados list from manipulated_ranking()', async () => {
+    const rows = [{ player_id: 'a', name: 'Ana', average: 8, manipulated: true }];
+    const { client, calls } = fakeClient({ data: rows });
+    expect(await supabaseApi(client).manipulatedRanking()).toEqual(rows);
+    expect(calls).toContainEqual({ path: 'client.rpc', args: ['manipulated_ranking'] });
+  });
+
+  it('R1.10 lists pending manipulations, and confirms or rejects one by id', async () => {
+    const pending = [{ id: 'm-1', name: 'Ana', created_at: '2026-10-22T12:00:00Z' }];
+    const { client, calls } = fakeClient({ data: pending });
+    const api = supabaseApi(client);
+    expect(await api.pendingManipulations()).toEqual(pending);
+    await api.confirmManipulation('m-1');
+    await api.rejectManipulation('m-2');
+    expect(calls).toContainEqual({ path: 'client.rpc', args: ['pending_manipulations'] });
+    expect(calls).toContainEqual({ path: 'client.rpc', args: ['confirm_manipulation', { manipulation_id: 'm-1' }] });
+    expect(calls).toContainEqual({ path: 'client.rpc', args: ['reject_manipulation', { manipulation_id: 'm-2' }] });
+  });
+});
+
 describe('error messages', () => {
   it('requestCodeError distinguishes rate limiting from an unregistered email', () => {
     expect(requestCodeError({ message: 'x', status: 429 })).toMatch(/Aguarde/);

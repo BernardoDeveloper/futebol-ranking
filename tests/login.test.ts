@@ -4,7 +4,7 @@ import type { Config } from '../src/config';
 import { loginView } from '../src/views/login';
 import { fakeApi, settle } from './fake-api';
 
-const config = (allowedDomain?: string): Config => ({ supabaseUrl: 'u', supabaseAnonKey: 'k', allowedDomain });
+const config = (allowedDomain?: string): Config => ({ supabaseUrl: 'u', supabaseAnonKey: 'k', allowedDomain, pix: undefined });
 
 function submit(root: HTMLElement, name: string, value: string): void {
   const input = root.querySelector<HTMLInputElement>(`input[name="${name}"]`);
