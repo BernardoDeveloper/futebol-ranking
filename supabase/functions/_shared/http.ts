@@ -11,6 +11,9 @@ const CORS = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// Details go to the function's logs, never to the caller.
+const INTERNAL = 'internal error';
+
 export function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
 }
@@ -46,7 +49,7 @@ export function manipularHandler(deps: { store: (authorization: string) => Store
       const message = errorMessage(error);
       if (/not a registered player/.test(message)) return json({ error: message }, 403);
       console.error(error);
-      return json({ error: message }, 500);
+      return json({ error: INTERNAL }, 500);
     }
   };
 }
@@ -63,7 +66,7 @@ export function webhookHandler(deps: { secret: string; reconcile: () => Promise<
     } catch (error) {
       // A non-2xx makes AbacatePay retry the delivery later.
       console.error(error);
-      return json({ error: errorMessage(error) }, 500);
+      return json({ error: INTERNAL }, 500);
     }
   };
 }

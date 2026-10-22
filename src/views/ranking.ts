@@ -43,7 +43,10 @@ export function rankingView(
       pix.replaceChildren(h('p', { class: 'message' }, 'Pago! Você está manipulado: veja a aba Manipulados.'));
     }
 
+    let waiting = false;
+
     function shown(state: Manipulation): void {
+      if (state.status !== 'pending') waiting = false;
       if (state.status === 'paid') {
         paid();
         return;
@@ -53,6 +56,12 @@ export function rankingView(
         pix.replaceChildren(h('p', { class: 'message' }, 'O Pix expirou. Toque em Manipular para gerar outro.'));
         return;
       }
+      if (waiting) {
+        // Still the same Pix: leave the panel alone, so a selection or "copiado" survives.
+        setTimeout(poll, pollMs);
+        return;
+      }
+      waiting = true;
       const status = h('p', { class: 'status', role: 'status' }, 'Aguardando pagamento…');
       const code = h('textarea', { readonly: true, rows: '3', 'aria-label': 'Pix copia e cola' }, state.brCode);
       pix.replaceChildren(

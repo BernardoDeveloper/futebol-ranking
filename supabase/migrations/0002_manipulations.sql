@@ -20,7 +20,10 @@ create unique index manipulations_one_per_player on public.manipulations (player
 
 -- The pending manipulation to pay, or a fresh one. Raises for a non-player and for a
 -- player already manipulated. A pending row with no charge was never shown to anyone,
--- so nobody can have paid it: it is dropped rather than reused.
+-- so nobody can have paid it: it is dropped rather than reused (the Edge Function
+-- attaches a charge only to a row still without one, and shows no Pix it could not
+-- attach). A pending row past its expiry is returned as is: only AbacatePay's answer
+-- may expire it, since a payment can land in its last seconds.
 
 create function public.start_manipulation() returns public.manipulations
 language plpgsql security definer set search_path = '' as $$
@@ -35,8 +38,6 @@ begin
     raise exception 'already manipulated' using errcode = 'unique_violation';
   end if;
 
-  update public.manipulations m set status = 'expired'
-  where m.player_id = me and m.status = 'pending' and m.expires_at <= now();
   delete from public.manipulations m
   where m.player_id = me and m.status = 'pending' and m.charge_id is null;
 

@@ -34,12 +34,16 @@ export function supabaseStore(asPlayer: SupabaseClient | null, admin: SupabaseCl
       return data ?? [];
     },
     async attach(id: string, pix: Pix) {
-      const { error } = await admin
+      const { data, error } = await admin
         .from('manipulations')
         .update({ charge_id: pix.id, br_code: pix.brCode, qr_code: pix.qrCode, expires_at: pix.expiresAt })
         .eq('id', id)
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .is('charge_id', null)
+        .select('id');
       check(error);
+      // Another start replaced this row meanwhile: its Pix must not be shown, since nothing would record its payment.
+      if (!data?.length) throw new Error('manipulation no longer pending; try again');
     },
     async settle(id, status) {
       const { error } = await admin

@@ -16,7 +16,7 @@ supabase/functions/_shared/manipulation.ts   start, check, reconcile: the flow, 
 supabase/functions/_shared/http.ts           CORS, JSON replies, constant-time secret compare
 supabase/functions/manipular/index.ts        POST {action: "start" | "check"}, called by the app with the player's JWT
 supabase/functions/abacatepay-webhook/index.ts  AbacatePay's webhook; no JWT, checked by ?webhookSecret=
-src/api.ts                                   manipulate, checkManipulation, myManipulation, manipulatedRanking
+src/api.ts                                   manipulate, checkManipulation, isManipulated, manipulatedRanking
 src/views/ranking.ts                         "Manipular" on the player's own row, the Pix panel, polling
 src/views/manipulated.ts                     the Manipulados tab
 ```
@@ -42,12 +42,15 @@ one manipulation that is pending or paid. `id` is sent to AbacatePay as `externa
 
 **Starting (R1.2, R1.5, R1.6).** `manipular` with `start` calls
 `start_manipulation()` as the player (their JWT). That `security definer` function
-raises for a non-player, raises `already manipulated` when a paid row exists, expires
-the player's pending row whose `expires_at` has passed, drops a pending row with no
-charge (one the function crashed before attaching, never shown, so never payable), and
-returns the pending row or a fresh one. When the row has no charge yet, the function
-creates the Pix (`amount: 200`, `expiresIn: 1800`) and attaches `charge_id`, `br_code`,
-`qr_code`, `expires_at` with the service-role client. The amount is a server
+raises for a non-player, raises `already manipulated` when a paid row exists, drops a
+pending row with no charge (never shown, so never payable), and returns the pending row
+or a fresh one. When the row has no charge yet, the function creates the Pix
+(`amount: 200`, `expiresIn: 1800`) and attaches `charge_id`, `br_code`, `qr_code`,
+`expires_at` with the service-role client, only to a row still pending and without a
+charge; if no row takes it (a concurrent start replaced it), the Pix is not shown, so
+no payable Pix ever goes unrecorded. A pending row past its `expires_at` is not expired
+by the clock: the function asks AbacatePay first, counts a late `PAID`, and opens a new
+Pix only once AbacatePay says `EXPIRED` or `CANCELLED`. The amount is a server
 constant; nothing the browser sends reaches it.
 
 **Confirming (R1.3, R1.4, R1.7).** AbacatePay's event payload is not the source of

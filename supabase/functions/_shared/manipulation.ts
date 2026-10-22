@@ -63,6 +63,12 @@ export async function start(store: Store, gateway: Gateway): Promise<View> {
     if (error instanceof Error && /already manipulated/.test(error.message)) return { status: 'paid' };
     throw error;
   }
+  if (row.charge_id !== null && row.expires_at !== null && Date.parse(row.expires_at) <= Date.now()) {
+    // Past its expiry here, but a payment may have landed in its last seconds: ask first.
+    const settled = await settleOne(store, gateway, row.id, row.charge_id);
+    if (settled === 'paid') return { status: 'paid' };
+    if (settled === 'expired') row = await store.begin();
+  }
   const existing = pendingView(row);
   if (existing) return existing;
   const pix = await gateway.createPix({
