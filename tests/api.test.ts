@@ -108,7 +108,7 @@ describe('supabaseApi', () => {
 
 describe('manipulations', () => {
   const QR = 'data:image/png;base64,AA==';
-  const pending = { status: 'pending', brCode: '000201…', qrCode: QR, expiresAt: '2026-10-22T13:00:00Z' };
+  const pending = { status: 'pending', brCode: '000201…', qrCode: QR, expiresAt: '2099-01-01T00:00:00Z' };
 
   it('R1.2 asks the manipular function to start a manipulation', async () => {
     const { client, calls } = fakeClient({ data: pending });

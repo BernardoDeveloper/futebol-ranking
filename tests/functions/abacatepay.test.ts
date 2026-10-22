@@ -15,7 +15,7 @@ function request(fetchFn: Fetch): { url: string; init: RequestInit } {
 
 describe('abacatePay().createPix', () => {
   const pix = { externalId: 'm-1', amount: 200, description: 'Manipulação', expiresIn: 1800 };
-  const created = { id: 'pix_char_1', amount: 200, status: 'PENDING', brCode: '000201…', brCodeBase64: QR, expiresAt: '2026-10-22T13:00:00Z' };
+  const created = { id: 'pix_char_1', amount: 200, status: 'PENDING', brCode: '000201…', brCodeBase64: QR, expiresAt: '2099-01-01T00:00:00Z' };
 
   it('R1.2 posts a Pix of the given amount in centavos, authenticated by the API key', async () => {
     const fetchFn = reply(200, { data: created, success: true, error: null });
@@ -33,7 +33,7 @@ describe('abacatePay().createPix', () => {
 
   it('R1.2 returns the charge id, copy-and-paste code, QR code and expiry', async () => {
     const result = await abacatePay('k', reply(200, { data: created, success: true, error: null })).createPix(pix);
-    expect(result).toEqual({ id: 'pix_char_1', brCode: '000201…', qrCode: QR, expiresAt: '2026-10-22T13:00:00Z' });
+    expect(result).toEqual({ id: 'pix_char_1', brCode: '000201…', qrCode: QR, expiresAt: '2099-01-01T00:00:00Z' });
   });
 
   it('throws with AbacatePay\'s error when the request fails', async () => {

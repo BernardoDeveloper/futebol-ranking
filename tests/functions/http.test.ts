@@ -55,7 +55,7 @@ describe('manipularHandler', () => {
     charge_id: 'pix_char_1',
     br_code: '000201…',
     qr_code: 'data:image/png;base64,AA==',
-    expires_at: '2026-10-22T13:00:00Z',
+    expires_at: '2099-01-01T00:00:00Z',
   };
 
   function setup(begin: () => Promise<Manipulation> = () => Promise.resolve(pending)) {

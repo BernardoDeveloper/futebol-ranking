@@ -10,7 +10,7 @@ import {
   type Store,
 } from '../../supabase/functions/_shared/manipulation';
 
-const PIX: Pix = { id: 'pix_char_1', brCode: '000201…', qrCode: 'data:image/png;base64,AA==', expiresAt: '2026-10-22T13:00:00Z' };
+const PIX: Pix = { id: 'pix_char_1', brCode: '000201…', qrCode: 'data:image/png;base64,AA==', expiresAt: '2099-01-01T00:00:00Z' };
 
 function row(overrides: Partial<Manipulation> = {}): Manipulation {
   return { id: 'm-1', status: 'pending', charge_id: null, br_code: null, qr_code: null, expires_at: null, ...overrides };

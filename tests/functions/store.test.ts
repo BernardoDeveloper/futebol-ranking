@@ -47,7 +47,7 @@ describe('supabaseStore', () => {
 
   it('attaches a charge only to a pending row that has none, failing when no row took it', async () => {
     const sent: Sent[] = [];
-    const pix = { id: 'pix_char_1', brCode: 'br', qrCode: 'qr', expiresAt: '2026-10-22T13:00:00Z' };
+    const pix = { id: 'pix_char_1', brCode: 'br', qrCode: 'qr', expiresAt: '2099-01-01T00:00:00Z' };
     await supabaseStore(null, client('service', [{ id: 'm-1' }], sent)).attach('m-1', pix);
     expect(sent[0]?.url.searchParams.get('status')).toBe('eq.pending');
     expect(sent[0]?.url.searchParams.get('charge_id')).toBe('is.null');

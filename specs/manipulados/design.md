@@ -14,6 +14,7 @@ supabase/migrations/0002_manipulations.sql   table, RLS, start_manipulation(), m
 supabase/functions/_shared/abacatepay.ts     createPix, checkPix: the two AbacatePay calls
 supabase/functions/_shared/manipulation.ts   start, check, reconcile: the flow, over a store and a gateway
 supabase/functions/_shared/http.ts           CORS, JSON replies, constant-time secret compare
+supabase/functions/_shared/env.ts            the project's URL and keys: new publishable/secret keys, else legacy
 supabase/functions/manipular/index.ts        POST {action: "start" | "check"}, called by the app with the player's JWT
 supabase/functions/abacatepay-webhook/index.ts  AbacatePay's webhook; no JWT, checked by ?webhookSecret=
 src/api.ts                                   manipulate, checkManipulation, isManipulated, manipulatedRanking
@@ -52,6 +53,12 @@ no payable Pix ever goes unrecorded. A pending row past its `expires_at` is not 
 by the clock: the function asks AbacatePay first, counts a late `PAID`, and opens a new
 Pix only once AbacatePay says `EXPIRED` or `CANCELLED`. The amount is a server
 constant; nothing the browser sends reaches it.
+
+**Authentication.** Both functions are deployed with `--no-verify-jwt`: the gateway's
+check does not support the asymmetric (ES256) JWT signing keys of projects on the new
+API keys. `manipular` relies on PostgREST instead, which verifies the player's JWT on
+every query the store makes with it; `start_manipulation()` runs before any AbacatePay
+call, so a caller who is not a player never reaches the gateway.
 
 **Confirming (R1.3, R1.4, R1.7).** AbacatePay's event payload is not the source of
 truth, its API is. Both paths call `GET /transparents/check?id=<charge_id>` with the

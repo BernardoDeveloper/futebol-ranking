@@ -74,12 +74,14 @@ As Edge Functions não são publicadas pelo CI: faça isso uma vez, e de novo qu
    supabase login
    supabase link --project-ref SEU-PROJECT-REF
    supabase secrets set ABACATEPAY_API_KEY=sua-chave ABACATEPAY_WEBHOOK_SECRET=$(openssl rand -hex 32)
-   supabase functions deploy manipular
+   supabase functions deploy manipular --no-verify-jwt
    supabase functions deploy abacatepay-webhook --no-verify-jwt
    ```
    Guarde o `ABACATEPAY_WEBHOOK_SECRET` gerado (`supabase secrets list` mostra só o hash).
-   O `--no-verify-jwt` é obrigatório no webhook: a AbacatePay não manda JWT do Supabase,
-   quem protege a função é o secret.
+   O `--no-verify-jwt` é obrigatório nas duas: no webhook porque a AbacatePay não manda
+   JWT do Supabase (quem protege a função é o secret); no `manipular` porque a checagem
+   do gateway não aceita as chaves JWT assimétricas dos projetos novos. O JWT do jogador
+   continua verificado pelo banco em toda consulta que a função faz com ele.
 4. Na AbacatePay, crie um webhook com o evento `transparent.completed`, a URL
    `https://SEU-PROJECT-REF.supabase.co/functions/v1/abacatepay-webhook` e, como
    *secret*, o mesmo valor de `ABACATEPAY_WEBHOOK_SECRET`. A AbacatePay acrescenta

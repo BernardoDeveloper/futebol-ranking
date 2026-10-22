@@ -159,7 +159,7 @@ describe('rankingView', () => {
 
 describe('rankingView — Manipular', () => {
   const QR = 'data:image/png;base64,AA==';
-  const pending: Manipulation = { status: 'pending', brCode: '000201pix', qrCode: QR, expiresAt: '2026-10-22T13:00:00Z' };
+  const pending: Manipulation = { status: 'pending', brCode: '000201pix', qrCode: QR, expiresAt: '2099-01-01T00:00:00Z' };
   const buttons = (root: HTMLElement, label: string): HTMLButtonElement[] =>
     [...root.querySelectorAll('button')].filter((b) => b.textContent === label);
 
