@@ -76,6 +76,37 @@ describe('start', () => {
     expect(gateway.createPix).not.toHaveBeenCalled();
   });
 
+  describe('R1.4 a pending charge past its expiry is settled from AbacatePay before anything new', () => {
+    const late = (): Manipulation => attached({ expires_at: '2020-01-01T00:00:00Z' });
+
+    it('counts a payment AbacatePay confirmed after the local expiry', async () => {
+      const rows = [late()];
+      const store = fakeStore(rows);
+      const gateway = fakeGateway({ [PIX.id]: 'PAID' });
+      expect(await start(store, gateway)).toEqual({ status: 'paid' });
+      expect(store.settle).toHaveBeenCalledWith('m-1', 'paid');
+      expect(gateway.createPix).not.toHaveBeenCalled();
+    });
+
+    it('opens a new Pix once AbacatePay says the old one expired', async () => {
+      const rows = [late()];
+      const fresh = row({ id: 'm-2' });
+      const store = fakeStore(rows);
+      store.begin.mockResolvedValueOnce(rows[0] ?? row()).mockResolvedValueOnce(fresh);
+      rows.push(fresh);
+      const gateway = fakeGateway({ [PIX.id]: 'EXPIRED' });
+      expect(await start(store, gateway)).toMatchObject({ status: 'pending' });
+      expect(store.settle).toHaveBeenCalledWith('m-1', 'expired');
+      expect(gateway.createPix).toHaveBeenCalledWith(expect.objectContaining({ externalId: 'm-2' }));
+    });
+
+    it('keeps showing the old Pix while AbacatePay still has it pending', async () => {
+      const gateway = fakeGateway({ [PIX.id]: 'PENDING' });
+      expect(await start(fakeStore([late()]), gateway)).toMatchObject({ status: 'pending', brCode: PIX.brCode });
+      expect(gateway.createPix).not.toHaveBeenCalled();
+    });
+  });
+
   it('passes on any other refusal from the database', async () => {
     const store = fakeStore([], () => Promise.reject(new Error('not a registered player')));
     await expect(start(store, fakeGateway())).rejects.toThrow('not a registered player');

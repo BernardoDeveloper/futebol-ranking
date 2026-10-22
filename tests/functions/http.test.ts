@@ -106,6 +106,14 @@ describe('manipularHandler', () => {
     expect((await handle(post({ action: 'start' }))).status).toBe(403);
   });
 
+  it('hides internal error details from the caller', async () => {
+    const { handle } = setup(() => Promise.reject(new Error('permission denied for table manipulations')));
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const response = await handle(post({ action: 'start' }));
+    expect(response.status).toBe(500);
+    expect(JSON.stringify(await response.json())).not.toContain('permission denied');
+  });
+
   it('answers the CORS preflight', async () => {
     const { handle } = setup();
     const response = await handle(new Request('https://x.supabase.co/functions/v1/manipular', { method: 'OPTIONS' }));

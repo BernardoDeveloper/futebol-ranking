@@ -217,6 +217,23 @@ describe('rankingView — Manipular', () => {
     expect(root.querySelector('tbody .tag')?.textContent).toBe('Manipulado');
   });
 
+  it('R1.3 keeps the Pix panel in place while the payment is still pending', async () => {
+    const { api } = fakeApi({ ranking, manipulation: pending, checks: [pending, pending, { status: 'paid' }] });
+    const root = mounted(api);
+    await settle();
+    button(root, 'Manipular').click();
+    await settle();
+    const img = root.querySelector('.pix img');
+    button(root, 'Copiar código Pix').click();
+    await settle();
+    await settle();
+    expect(api.checkManipulation).toHaveBeenCalled();
+    expect(root.querySelector('.pix img')).toBe(img);
+    expect(root.querySelector('.pix .status')?.textContent).toContain('Código copiado');
+    await settleAll();
+    expect(root.querySelector('.pix')?.textContent).toContain('Pago!');
+  });
+
   it('R1.3 keeps checking after a failed check', async () => {
     const { api } = fakeApi({ ranking, manipulation: pending, checks: [{ status: 'paid' }] });
     api.checkManipulation.mockRejectedValueOnce(new Error('offline'));

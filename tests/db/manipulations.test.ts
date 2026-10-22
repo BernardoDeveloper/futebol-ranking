@@ -79,15 +79,11 @@ describe('start_manipulation()', () => {
     expect(await statuses()).toHaveLength(1);
   });
 
-  it('R1.6 expires a pending manipulation whose charge has expired and opens a new one', async () => {
+  it('R1.4 keeps a pending manipulation past its expiry, for AbacatePay to settle', async () => {
     const first = await start(ANA);
     await attach(first.id, 'pix_char_1', `now() - interval '1 minute'`);
     const again = await start(ANA);
-    expect(again.id).not.toBe(first.id);
-    expect(await statuses()).toEqual([
-      { id: first.id, status: 'expired' },
-      { id: again.id, status: 'pending' },
-    ]);
+    expect(again).toMatchObject({ id: first.id, status: 'pending', charge_id: 'pix_char_1' });
   });
 
   it('R1.6 replaces a pending manipulation that never got a charge', async () => {
