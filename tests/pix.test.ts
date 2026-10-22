@@ -44,6 +44,7 @@ describe('pixCode', () => {
   it('refuses a key that does not fit the field, and a txid that is not alphanumeric', () => {
     expect(() => pixCode({ ...receiver, key: '' }, { txid: '***' })).toThrow(/Pix key/);
     expect(() => pixCode({ ...receiver, key: 'x'.repeat(78) }, { txid: '***' })).toThrow(/Pix key/);
+    expect(() => pixCode({ ...receiver, key: 'joão@acme.com' }, { txid: '***' })).toThrow(/Pix key/);
     expect(() => pixCode(receiver, { txid: 'MANIP-1' })).toThrow(/txid/);
     expect(() => pixCode(receiver, { txid: 'A'.repeat(26) })).toThrow(/txid/);
   });

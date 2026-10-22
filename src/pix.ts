@@ -36,7 +36,8 @@ function plain(text: string, max: number): string {
 export function pixCode(receiver: PixReceiver, charge: { amount?: number; txid: string }): string {
   const key = receiver.key.trim();
   // The account field holds the GUI (18 characters) and the key in at most 99.
-  if (key === '' || key.length > 77) throw new Error('Pix key must have 1 to 77 characters');
+  // Field lengths count bytes; a key outside printable ASCII would miscount them.
+  if (!/^[\x20-\x7e]{1,77}$/.test(key)) throw new Error('Pix key must have 1 to 77 plain ASCII characters');
   if (charge.txid !== '***' && !/^[A-Za-z0-9]{1,25}$/.test(charge.txid)) {
     throw new Error('txid must be 1 to 25 letters or digits');
   }
@@ -44,6 +45,10 @@ export function pixCode(receiver: PixReceiver, charge: { amount?: number; txid: 
   if (amount !== undefined && (!Number.isInteger(amount) || amount <= 0)) {
     throw new Error('amount must be a positive whole number of centavos');
   }
+  const name = plain(receiver.name, 25);
+  const city = plain(receiver.city, 15);
+  if (name === '') throw new Error('Pix name has no letters left once accents and symbols are removed');
+  if (city === '') throw new Error('Pix city has no letters left once accents and symbols are removed');
   const payload = [
     field('00', '01'),
     field('26', field('00', 'br.gov.bcb.pix') + field('01', key)),
@@ -51,8 +56,8 @@ export function pixCode(receiver: PixReceiver, charge: { amount?: number; txid: 
     field('53', '986'),
     amount === undefined ? '' : field('54', (amount / 100).toFixed(2)),
     field('58', 'BR'),
-    field('59', plain(receiver.name, 25)),
-    field('60', plain(receiver.city, 15)),
+    field('59', name),
+    field('60', city),
     field('62', field('05', charge.txid)),
     '6304',
   ].join('');

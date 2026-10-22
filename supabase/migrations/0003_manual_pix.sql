@@ -10,13 +10,15 @@ alter table public.manipulations
   drop column expires_at,
   add column decided_by uuid references public.players (id) on delete set null;
 
+-- 0002's index exempts only 'expired' rows, so it goes before they become 'rejected':
+-- a player who retried after an expired Pix would otherwise collide with themselves.
+drop index public.manipulations_one_per_player;
 alter table public.manipulations drop constraint manipulations_status_check;
 update public.manipulations set status = 'rejected' where status = 'expired';
 alter table public.manipulations
   add constraint manipulations_status_check check (status in ('pending', 'paid', 'rejected'));
 
 -- Only once: at most one pending or paid manipulation per player.
-drop index public.manipulations_one_per_player;
 create unique index manipulations_one_per_player on public.manipulations (player_id)
   where status <> 'rejected';
 

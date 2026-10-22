@@ -66,8 +66,10 @@ salva nota no nome de outro nem vê as notas individuais dos outros — só as m
 
 1. **SQL Editor** → rode [`supabase/migrations/0002_manipulations.sql`](supabase/migrations/0002_manipulations.sql)
    e depois [`supabase/migrations/0003_manual_pix.sql`](supabase/migrations/0003_manual_pix.sql).
+   Se a 0002 já rodou no projeto, rode só a 0003.
 2. **Settings → Secrets and variables → Actions → Variables**, crie:
-   - `VITE_PIX_KEY` — sua chave Pix (CPF só com dígitos, email, telefone `+55...` ou chave aleatória)
+   - `VITE_PIX_KEY` — sua chave Pix; prefira uma **chave aleatória**, porque ela fica
+     pública no site (CPF só com dígitos, email ou telefone `+55...` também funcionam)
    - `VITE_PIX_NAME` — seu nome como está no banco (até 25 letras, sem acento)
    - `VITE_PIX_CITY` — sua cidade (até 15 letras, sem acento)
 
