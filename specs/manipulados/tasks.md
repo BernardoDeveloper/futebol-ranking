@@ -45,6 +45,6 @@ AbacatePay needs a CNPJ in production; adr:0003-take-manipulation-pix-on-a-perso
 - [x] 5.6 (Unit) List pending manipulations with confirm and reject in the Jogadores tab — R1.10
   _Depends 5.4_
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_
-- [ ] 5.7 (Unit) Remove the Edge Functions and AbacatePay, and update the stack, glossary, README and CI variables — R1.1
+- [x] 5.7 (Unit) Remove the Edge Functions and AbacatePay, and update the stack, glossary, README and CI variables — R1.1
   _Depends 5.5, 5.6_
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_

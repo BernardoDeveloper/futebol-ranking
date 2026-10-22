@@ -50,6 +50,10 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
           VITE_ALLOWED_EMAIL_DOMAIN: ${{ vars.VITE_ALLOWED_EMAIL_DOMAIN }}
+          # Public by nature: a Pix key is what payers type. Without all three, no "Manipular".
+          VITE_PIX_KEY: ${{ vars.VITE_PIX_KEY }}
+          VITE_PIX_NAME: ${{ vars.VITE_PIX_NAME }}
+          VITE_PIX_CITY: ${{ vars.VITE_PIX_CITY }}
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

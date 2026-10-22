@@ -11,10 +11,11 @@ salva nota no nome de outro nem vê as notas individuais dos outros — só as m
 
 - Site estático no GitHub Pages; backend é o Supabase (plano grátis).
 - Spec: [`specs/ranking-jogadores/`](specs/ranking-jogadores/) · decisão: [`docs/adr/0001-use-supabase-for-auth-and-data.md`](docs/adr/0001-use-supabase-for-auth-and-data.md)
-- **Manipulados**, só pela resenha: na sua linha do ranking, **Manipular** gera um Pix de
-  R$ 2,00 pela AbacatePay; pago, você sobe 3 pontos na aba **Manipulados** (uma vez só).
-  O ranking oficial e o Copiar não mudam. Spec: [`specs/manipulados/`](specs/manipulados/)
-  · decisão: [`docs/adr/0002-take-pix-payments-through-abacatepay-edge-functions.md`](docs/adr/0002-take-pix-payments-through-abacatepay-edge-functions.md)
+- **Manipulados**, só pela resenha: na sua linha do ranking, **Manipular** mostra um Pix
+  de R$ 2,00 para a chave do organizador; quando um admin confirma o pagamento, você sobe
+  3 pontos na aba **Manipulados** (uma vez só). O ranking oficial e o Copiar não mudam.
+  Spec: [`specs/manipulados/`](specs/manipulados/) · decisão:
+  [`docs/adr/0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin.md`](docs/adr/0003-take-manipulation-pix-on-a-personal-key-confirmed-by-an-admin.md)
 
 ## Colocando no ar
 
@@ -61,40 +62,20 @@ salva nota no nome de outro nem vê as notas individuais dos outros — só as m
      digita só `bernardo.gsilva`)
 4. Cada push na `main` roda testes e lint, gera o site e publica.
 
-### 3. Manipulados (AbacatePay)
+### 3. Manipulados (Pix na sua chave)
 
-As Edge Functions não são publicadas pelo CI: faça isso uma vez, e de novo quando
-`supabase/functions/` mudar.
+1. **SQL Editor** → rode [`supabase/migrations/0002_manipulations.sql`](supabase/migrations/0002_manipulations.sql)
+   e depois [`supabase/migrations/0003_manual_pix.sql`](supabase/migrations/0003_manual_pix.sql).
+2. **Settings → Secrets and variables → Actions → Variables**, crie:
+   - `VITE_PIX_KEY` — sua chave Pix (CPF só com dígitos, email, telefone `+55...` ou chave aleatória)
+   - `VITE_PIX_NAME` — seu nome como está no banco (até 25 letras, sem acento)
+   - `VITE_PIX_CITY` — sua cidade (até 15 letras, sem acento)
 
-1. **SQL Editor** → cole e rode [`supabase/migrations/0002_manipulations.sql`](supabase/migrations/0002_manipulations.sql).
-2. Na [AbacatePay](https://abacatepay.com), com o **Dev Mode** ligado, crie uma chave de
-   API com permissão para criar e consultar cobranças do Checkout Transparente.
-3. Com a [Supabase CLI](https://supabase.com/docs/guides/cli):
-   ```bash
-   supabase login
-   supabase link --project-ref SEU-PROJECT-REF
-   supabase secrets set ABACATEPAY_API_KEY=sua-chave ABACATEPAY_WEBHOOK_SECRET=$(openssl rand -hex 32)
-   supabase functions deploy manipular --no-verify-jwt
-   supabase functions deploy abacatepay-webhook --no-verify-jwt
-   ```
-   Guarde o `ABACATEPAY_WEBHOOK_SECRET` gerado (`supabase secrets list` mostra só o hash).
-   O `--no-verify-jwt` é obrigatório nas duas: no webhook porque a AbacatePay não manda
-   JWT do Supabase (quem protege a função é o secret); no `manipular` porque a checagem
-   do gateway não aceita as chaves JWT assimétricas dos projetos novos. O JWT do jogador
-   continua verificado pelo banco em toda consulta que a função faz com ele.
-4. Na AbacatePay, crie um webhook com o evento `transparent.completed`, a URL
-   `https://SEU-PROJECT-REF.supabase.co/functions/v1/abacatepay-webhook` e, como
-   *secret*, o mesmo valor de `ABACATEPAY_WEBHOOK_SECRET`. A AbacatePay acrescenta
-   `?webhookSecret=...` em cada entrega; se nos logs da função aparecer `401`, inclua
-   `?webhookSecret=SEU_SECRET` na própria URL do webhook.
-5. Teste: clique em **Manipular**, depois simule o pagamento no painel da AbacatePay (ou
-   `POST /v2/transparents/simulate-payment`). Em segundos a linha mostra *Manipulado*.
-6. **Dinheiro de verdade**: desligue o Dev Mode, crie a chave e o webhook de produção e
-   rode de novo o `supabase secrets set ABACATEPAY_API_KEY=...`. O valor cai na conta
-   AbacatePay dona da chave, menos a taxa dela.
-
-Um pagamento só conta quando a API da AbacatePay, consultada com a chave, diz `PAID`; o
-webhook só avisa que é hora de consultar.
+   Sem as três, o botão **Manipular** não aparece. A chave é pública por natureza: é o
+   que quem paga digita.
+3. Quando alguém manipular, confira no extrato um Pix de R$ 2,00 com o código
+   `MANIP...` (ou o nome da pessoa) e, na aba **Jogadores**, toque em **Confirmar** — ou
+   **Recusar**, se o Pix não chegou. Fica registrado qual admin decidiu.
 
 ## Desenvolvimento
 

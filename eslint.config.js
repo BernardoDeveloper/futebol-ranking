@@ -3,8 +3,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  // The Edge Functions' Deno entry points: Deno globals, not checked here (adr:0002).
-  { ignores: ['dist', 'node_modules', '.codegraph', 'supabase/functions/*/index.ts'] },
+  { ignores: ['dist', 'node_modules', '.codegraph'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
