@@ -3,6 +3,7 @@ import type { Config } from './config';
 import { h } from './dom';
 import { loginView } from './views/login';
 import { playersView } from './views/players';
+import { manipulatedView } from './views/manipulated';
 import { errorText, rankingView } from './views/ranking';
 import { ratingsView } from './views/ratings';
 
@@ -34,6 +35,7 @@ export function mountApp(root: HTMLElement, api: Api, config: Config): void {
     const tabs: Tab[] = [
       { label: 'Ranking', view: () => rankingView(api, me) },
       { label: 'Avaliar', view: () => ratingsView(api, me) },
+      { label: 'Manipulados', view: () => manipulatedView(api) },
     ];
     if (me.is_admin) tabs.push({ label: 'Jogadores', view: () => playersView(api, config, me) });
 

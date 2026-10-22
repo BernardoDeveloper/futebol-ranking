@@ -18,7 +18,7 @@
   _Depends 1.1_
 - [x] 3.2 (Unit) Show "Manipular" on the player's own ranking row, the Pix panel with polling, and "Manipulado" once paid — R1.1, R1.2, R1.3, R1.9
   _Depends 3.1_
-- [ ] 3.3 (Unit) Add the Manipulados tab with the manipulated ranking and a mark on manipulated players — R2.1, R2.3
+- [x] 3.3 (Unit) Add the Manipulados tab with the manipulated ranking and a mark on manipulated players — R2.1, R2.3
   _Depends 3.1_
 
 ## 4 · Docs

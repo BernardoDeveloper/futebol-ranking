@@ -26,11 +26,11 @@ describe('mountApp', () => {
     expect(root.querySelector('input[name="email"]')).not.toBeNull();
   });
 
-  it('shows Ranking and Avaliar to a player, opening on the ranking', async () => {
+  it('shows Ranking, Avaliar and Manipulados to a player, opening on the ranking', async () => {
     const { root, signIn } = mount([admin, bruno]);
     signIn('Bruno@acme.com');
     await settle();
-    expect(tabs(root)).toEqual(['Ranking', 'Avaliar']);
+    expect(tabs(root)).toEqual(['Ranking', 'Avaliar', 'Manipulados']);
     expect(root.querySelector('h2')?.textContent).toBe('Ranking');
   });
 
@@ -38,7 +38,7 @@ describe('mountApp', () => {
     const { root, signIn } = mount([admin, bruno]);
     signIn('ana@acme.com');
     await settle();
-    expect(tabs(root)).toEqual(['Ranking', 'Avaliar', 'Jogadores']);
+    expect(tabs(root)).toEqual(['Ranking', 'Avaliar', 'Manipulados', 'Jogadores']);
   });
 
   it('keeps the open tab when Supabase re-announces the same session', async () => {

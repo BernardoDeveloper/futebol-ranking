@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Api, Manipulation, Player } from '../src/api';
 import type { Config } from '../src/config';
 import { COPY_PROMPT, type RankingRow } from '../src/ranking';
+import { manipulatedView } from '../src/views/manipulated';
 import { playersView } from '../src/views/players';
 import { rankingView } from '../src/views/ranking';
 import { ratingsView } from '../src/views/ratings';
@@ -273,6 +274,35 @@ describe('rankingView — Manipular', () => {
     const root = mounted(api);
     await settle();
     expect(root.querySelectorAll('tbody tr')).toHaveLength(3);
+  });
+});
+
+describe('manipulatedView', () => {
+  it('R2.1 R2.3 lists every player by manipulated rating, marking the manipulated ones', async () => {
+    const { api } = fakeApi({
+      manipulated: [
+        { player_id: 'c', name: 'Caio', average: '9.0', manipulated: false },
+        { player_id: 'a', name: 'Ana', average: 8, manipulated: true },
+        { player_id: 'b', name: 'Bruno', average: null, manipulated: false },
+      ],
+    });
+    const root = manipulatedView(api);
+    await settle();
+    const rows = [...root.querySelectorAll('tbody tr')].map((tr) => [...tr.querySelectorAll('td')].map((td) => td.textContent));
+    expect(rows).toEqual([
+      ['1', 'Caio', '9.0'],
+      ['2', 'AnaManipulado', '8.0'],
+      ['', 'Bruno', 'sem nota'],
+    ]);
+    expect([...root.querySelectorAll('tbody .tag')]).toHaveLength(1);
+  });
+
+  it('shows a load failure', async () => {
+    const { api } = fakeApi();
+    api.manipulatedRanking.mockRejectedValueOnce(new Error('offline'));
+    const root = manipulatedView(api);
+    await settle();
+    expect(root.querySelector('.message.error')?.textContent).toBe('offline');
   });
 });
 
