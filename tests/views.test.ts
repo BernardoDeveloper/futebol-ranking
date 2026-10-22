@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, expect, it, vi } from 'vitest';
-import type { Player } from '../src/api';
+import type { Api, Manipulation, Player } from '../src/api';
 import type { Config } from '../src/config';
 import { COPY_PROMPT, type RankingRow } from '../src/ranking';
 import { playersView } from '../src/views/players';
@@ -40,14 +40,14 @@ function toggle(box: HTMLInputElement | undefined): void {
 describe('rankingView', () => {
   it('R4.1 lists every player in ranking order with average rating and number of ratings', async () => {
     const { api } = fakeApi({ ranking });
-    const root = rankingView(api);
+    const root = rankingView(api, bruno);
     await settle();
     const rows = [...root.querySelectorAll('tbody tr')].map((tr) =>
       [...tr.querySelectorAll('td:not(.pick)')].map((td) => td.textContent),
     );
     expect(rows).toEqual([
       ['1', 'Ana', '8.7', '3'],
-      ['2', 'Bruno', '7.5', '2'],
+      ['2', 'BrunoManipular', '7.5', '2'],
       ['', 'Caio', 'sem nota', '0'],
     ]);
   });
@@ -55,7 +55,7 @@ describe('rankingView', () => {
   it('R4.2 "Copiar" copies "<name> - <average rating>" lines in ranking order', async () => {
     const { api } = fakeApi({ ranking });
     const copy = vi.fn((_text: string) => Promise.resolve(true));
-    const root = rankingView(api, copy);
+    const root = rankingView(api, bruno, copy);
     await settle();
     button(root, 'Copiar').click();
     await settle();
@@ -65,7 +65,7 @@ describe('rankingView', () => {
 
   it('R4.3 shows the text for manual copying when the clipboard fails', async () => {
     const { api } = fakeApi({ ranking });
-    const root = rankingView(api, () => Promise.resolve(false));
+    const root = rankingView(api, bruno, () => Promise.resolve(false));
     await settle();
     button(root, 'Copiar').click();
     await settle();
@@ -74,7 +74,7 @@ describe('rankingView', () => {
 
   it('R4.4 offers a checkbox per player, all checked when the ranking opens', async () => {
     const { api } = fakeApi({ ranking });
-    const root = rankingView(api);
+    const root = rankingView(api, bruno);
     await settle();
     const boxes = checkboxes(root);
     expect(boxes.map((b) => b.getAttribute('aria-label'))).toEqual([
@@ -89,7 +89,7 @@ describe('rankingView', () => {
   it('R4.2 R4.4 "Copiar" copies only the selected players, in ranking order', async () => {
     const { api } = fakeApi({ ranking });
     const copy = vi.fn((_text: string) => Promise.resolve(true));
-    const root = rankingView(api, copy);
+    const root = rankingView(api, bruno, copy);
     await settle();
     toggle(checkboxes(root)[2]);
     button(root, 'Copiar').click();
@@ -101,7 +101,7 @@ describe('rankingView', () => {
   it('R4.4 the check-all checkbox unchecks and checks every player at once', async () => {
     const { api } = fakeApi({ ranking });
     const copy = vi.fn((_text: string) => Promise.resolve(true));
-    const root = rankingView(api, copy);
+    const root = rankingView(api, bruno, copy);
     await settle();
     const [all] = checkboxes(root);
     toggle(all);
@@ -116,7 +116,7 @@ describe('rankingView', () => {
 
   it('R4.5 disables "Copiar" while no player is selected', async () => {
     const { api } = fakeApi({ ranking });
-    const root = rankingView(api);
+    const root = rankingView(api, bruno);
     await settle();
     const [all] = checkboxes(root);
     toggle(all);
@@ -128,7 +128,7 @@ describe('rankingView', () => {
 
   it('R4.3 R4.4 shows only the selected players for manual copying when the clipboard fails', async () => {
     const { api } = fakeApi({ ranking });
-    const root = rankingView(api, () => Promise.resolve(false));
+    const root = rankingView(api, bruno, () => Promise.resolve(false));
     await settle();
     toggle(checkboxes(root)[1]);
     button(root, 'Copiar').click();
@@ -138,7 +138,7 @@ describe('rankingView', () => {
 
   it('clears the copied text when the selection changes, so it is never stale', async () => {
     const { api } = fakeApi({ ranking });
-    const root = rankingView(api, () => Promise.resolve(false));
+    const root = rankingView(api, bruno, () => Promise.resolve(false));
     await settle();
     button(root, 'Copiar').click();
     await settle();
@@ -150,9 +150,129 @@ describe('rankingView', () => {
   it('shows a load failure', async () => {
     const { api } = fakeApi();
     api.ranking.mockRejectedValueOnce(new Error('offline'));
-    const root = rankingView(api);
+    const root = rankingView(api, bruno);
     await settle();
     expect(root.querySelector('.message.error')?.textContent).toBe('offline');
+  });
+});
+
+describe('rankingView — Manipular', () => {
+  const QR = 'data:image/png;base64,AA==';
+  const pending: Manipulation = { status: 'pending', brCode: '000201pix', qrCode: QR, expiresAt: '2026-10-22T13:00:00Z' };
+  const buttons = (root: HTMLElement, label: string): HTMLButtonElement[] =>
+    [...root.querySelectorAll('button')].filter((b) => b.textContent === label);
+
+  // Polling stops once the view leaves the page, so these views are put on it.
+  function mounted(api: Api, me: Player = bruno, copy: (text: string) => Promise<boolean> = () => Promise.resolve(true)): HTMLElement {
+    const root = rankingView(api, me, copy, 0);
+    document.body.replaceChildren(root);
+    return root;
+  }
+
+  async function settleAll(): Promise<void> {
+    for (let i = 0; i < 10; i++) await settle();
+  }
+
+  it('R1.1 shows "Manipular" on the signed-in player\'s own row only', async () => {
+    const { api } = fakeApi({ ranking });
+    const root = mounted(api);
+    await settle();
+    const rows = [...root.querySelectorAll('tbody tr')];
+    expect(rows.map((tr) => tr.querySelectorAll('button').length)).toEqual([0, 1, 0]);
+    expect(rows[1]?.querySelector('button')?.textContent).toBe('Manipular');
+  });
+
+  it('R1.9 shows "Manipulado" instead of the button once the player has paid', async () => {
+    const { api } = fakeApi({ ranking, isManipulated: true });
+    const root = mounted(api);
+    await settle();
+    expect(buttons(root, 'Manipular')).toHaveLength(0);
+    expect(root.querySelector('tbody tr:nth-child(2) .tag')?.textContent).toBe('Manipulado');
+  });
+
+  it('R1.2 shows the Pix QR code and copy-and-paste code when "Manipular" is pressed', async () => {
+    const { api } = fakeApi({ ranking, manipulation: pending, checks: [pending] });
+    const copy = vi.fn((_text: string) => Promise.resolve(true));
+    const root = mounted(api, bruno, copy);
+    await settle();
+    button(root, 'Manipular').click();
+    await settle();
+    expect(api.manipulate).toHaveBeenCalledOnce();
+    expect(root.querySelector('.pix img')?.getAttribute('src')).toBe(QR);
+    expect(root.querySelector<HTMLTextAreaElement>('.pix textarea')?.value).toBe('000201pix');
+    button(root, 'Copiar código Pix').click();
+    expect(copy).toHaveBeenCalledWith('000201pix');
+  });
+
+  it('R1.3 R1.9 checks the payment until it is paid, then shows the player manipulated', async () => {
+    const { api } = fakeApi({ ranking, manipulation: pending, checks: [pending, { status: 'paid' }] });
+    const root = mounted(api);
+    await settle();
+    button(root, 'Manipular').click();
+    await settleAll();
+    expect(api.checkManipulation).toHaveBeenCalledTimes(2);
+    expect(root.querySelector('.pix')?.textContent).toContain('Pago!');
+    expect(buttons(root, 'Manipular')).toHaveLength(0);
+    expect(root.querySelector('tbody .tag')?.textContent).toBe('Manipulado');
+  });
+
+  it('R1.3 keeps checking after a failed check', async () => {
+    const { api } = fakeApi({ ranking, manipulation: pending, checks: [{ status: 'paid' }] });
+    api.checkManipulation.mockRejectedValueOnce(new Error('offline'));
+    const root = mounted(api);
+    await settle();
+    button(root, 'Manipular').click();
+    await settleAll();
+    expect(root.querySelector('.pix')?.textContent).toContain('Pago!');
+  });
+
+  it('offers a new Pix once the pending one expired', async () => {
+    const { api } = fakeApi({ ranking, manipulation: pending, checks: [{ status: 'none' }] });
+    const root = mounted(api);
+    await settle();
+    button(root, 'Manipular').click();
+    await settleAll();
+    expect(root.querySelector('.pix')?.textContent).toContain('expirou');
+    expect(button(root, 'Manipular').disabled).toBe(false);
+  });
+
+  it('stops checking once the ranking is no longer on screen', async () => {
+    const { api } = fakeApi({ ranking, manipulation: pending, checks: [pending, pending, pending] });
+    const root = mounted(api);
+    await settle();
+    button(root, 'Manipular').click();
+    await settle();
+    root.remove();
+    await settleAll();
+    expect(api.checkManipulation.mock.calls.length).toBeLessThanOrEqual(1);
+  });
+
+  it('R1.5 shows the player manipulated when the backend says they already paid', async () => {
+    const { api } = fakeApi({ ranking, manipulation: { status: 'paid' } });
+    const root = mounted(api);
+    await settle();
+    button(root, 'Manipular').click();
+    await settle();
+    expect(root.querySelector('tbody .tag')?.textContent).toBe('Manipulado');
+  });
+
+  it('R1.2 shows a failure to create the Pix and lets the player try again', async () => {
+    const { api } = fakeApi({ ranking });
+    api.manipulate.mockRejectedValueOnce(new Error('Não foi possível gerar o Pix. Tente de novo.'));
+    const root = mounted(api);
+    await settle();
+    button(root, 'Manipular').click();
+    await settle();
+    expect(root.querySelector('.pix .message.error')?.textContent).toBe('Não foi possível gerar o Pix. Tente de novo.');
+    expect(button(root, 'Manipular').disabled).toBe(false);
+  });
+
+  it('R2.4 still shows the official ranking when the manipulation state cannot be read', async () => {
+    const { api } = fakeApi({ ranking });
+    api.isManipulated.mockRejectedValueOnce(new Error('relation "manipulations" does not exist'));
+    const root = mounted(api);
+    await settle();
+    expect(root.querySelectorAll('tbody tr')).toHaveLength(3);
   });
 });
 

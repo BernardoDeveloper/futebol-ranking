@@ -32,7 +32,7 @@ export function mountApp(root: HTMLElement, api: Api, config: Config): void {
 
   function shell(me: Player): HTMLElement {
     const tabs: Tab[] = [
-      { label: 'Ranking', view: () => rankingView(api) },
+      { label: 'Ranking', view: () => rankingView(api, me) },
       { label: 'Avaliar', view: () => ratingsView(api, me) },
     ];
     if (me.is_admin) tabs.push({ label: 'Jogadores', view: () => playersView(api, config, me) });

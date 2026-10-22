@@ -115,3 +115,18 @@ ul { list-style: none; margin: 0; padding: 0; }
   color: var(--accent-text);
   vertical-align: middle;
 }
+
+button.small { padding: 2px 8px; margin-left: 8px; font-size: 0.8rem; }
+.tag {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pix:not(:empty) { margin: 12px 0; padding: 12px; border: 1px dashed var(--border); border-radius: var(--radius); }
+.pix h3 { margin: 0 0 8px; font-size: 1rem; }
+.pix img { display: block; max-width: 100%; height: auto; margin: 8px auto; background: #fff; border-radius: 8px; }
