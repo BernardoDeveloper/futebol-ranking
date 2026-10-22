@@ -1,10 +1,11 @@
-import type { Api, Player } from '../api';
+import type { Api, PendingManipulation, Player } from '../api';
 import type { Config } from '../config';
 import { h } from '../dom';
 import { loginEmail } from '../email';
+import { manipulationTxid } from '../pix';
 import { errorText } from './ranking';
 
-/** Admins register and remove players (R2.1, R2.2). */
+/** Admins register and remove players (R2.1, R2.2), and decide manipulations (specs/manipulados R1.10). */
 export function playersView(api: Api, config: Config, me: Player): HTMLElement {
   const root = h('section', { class: 'card' });
   const message = h('p', { class: 'message', role: 'status' });
@@ -97,7 +98,57 @@ export function playersView(api: Api, config: Config, me: Player): HTMLElement {
     }
   }
 
-  root.replaceChildren(h('h2', {}, 'Jogadores'), form, message, list);
+  const pendingList = h('ul', { class: 'player-list pending-list' });
+
+  function pendingItem(manipulation: PendingManipulation): HTMLElement {
+    const decide = (verb: 'confirm' | 'reject'): void => {
+      confirm.disabled = true;
+      reject.disabled = true;
+      const call = verb === 'confirm' ? api.confirmManipulation(manipulation.id) : api.rejectManipulation(manipulation.id);
+      call.then(
+        () => {
+          say(verb === 'confirm' ? `${manipulation.name} está manipulado.` : `Manipulação de ${manipulation.name} recusada.`);
+          void loadPending();
+        },
+        (error: unknown) => {
+          say(errorText(error), true);
+          confirm.disabled = false;
+          reject.disabled = false;
+        },
+      );
+    };
+    const confirm = h('button', { type: 'button', class: 'small', onclick: () => { decide('confirm'); } }, 'Confirmar');
+    const reject = h('button', { type: 'button', class: 'danger', onclick: () => { decide('reject'); } }, 'Recusar');
+    return h(
+      'li',
+      {},
+      h('span', { class: 'name' }, manipulation.name),
+      h('span', { class: 'muted' }, manipulationTxid(manipulation.id), ' · ', new Date(manipulation.created_at).toLocaleString('pt-BR')),
+      h('span', {}, confirm, reject),
+    );
+  }
+
+  async function loadPending(): Promise<void> {
+    try {
+      const pending = await api.pendingManipulations();
+      pendingList.replaceChildren(
+        ...(pending.length ? pending.map(pendingItem) : [h('li', { class: 'muted' }, 'Nenhuma manipulação pendente.')]),
+      );
+    } catch (error) {
+      say(errorText(error), true);
+    }
+  }
+
+  root.replaceChildren(
+    h('h2', {}, 'Jogadores'),
+    form,
+    message,
+    list,
+    h('h3', {}, 'Manipulações pendentes'),
+    h('p', { class: 'muted' }, 'Confira no extrato um Pix de R$ 2,00 com o código da manipulação, ou do nome do jogador, antes de confirmar.'),
+    pendingList,
+  );
   void load();
+  void loadPending();
   return root;
 }

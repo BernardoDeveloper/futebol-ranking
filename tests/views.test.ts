@@ -445,6 +445,53 @@ describe('ratingsView', () => {
   });
 });
 
+describe('playersView — pending manipulations', () => {
+  const pending = [
+    { id: '3f2a9c1e-77d0-4b8e-9a51-0c6e2d4f8b13', name: 'Bruno', created_at: '2026-10-22T12:00:00Z' },
+    { id: 'aa11bb22-0000-4000-8000-000000000000', name: 'Caio', created_at: '2026-10-22T12:05:00Z' },
+  ];
+  const items = (root: HTMLElement): HTMLElement[] => [...root.querySelectorAll<HTMLElement>('.pending-list li')];
+
+  it('R1.10 lists each pending manipulation with the player name and manipulation code', async () => {
+    const { api } = fakeApi({ players: [ana], pending });
+    const root = playersView(api, config, ana);
+    await settle();
+    const texts = items(root).map((li) => li.textContent);
+    expect(texts[0]).toContain('Bruno');
+    expect(texts[0]).toContain('MANIP3F2A9C1E');
+    expect(texts[1]).toContain('Caio');
+  });
+
+  it('R1.4 R1.7 confirms or rejects a manipulation by id, then reloads the list', async () => {
+    const { api } = fakeApi({ players: [ana], pending });
+    const root = playersView(api, config, ana);
+    await settle();
+    items(root)[0]?.querySelector<HTMLButtonElement>('button')?.click();
+    await settle();
+    expect(api.confirmManipulation).toHaveBeenCalledWith(pending[0]?.id);
+    expect(root.querySelector('.message')?.textContent).toBe('Bruno está manipulado.');
+    [...(items(root)[1]?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find((b) => b.textContent === 'Recusar')?.click();
+    await settle();
+    expect(api.rejectManipulation).toHaveBeenCalledWith(pending[1]?.id);
+    expect(api.pendingManipulations).toHaveBeenCalledTimes(3);
+  });
+
+  it('says when nothing is pending, and shows a failure to decide', async () => {
+    const { api } = fakeApi({ players: [ana], pending: pending.slice(0, 1) });
+    api.confirmManipulation.mockRejectedValueOnce(new Error('manipulation is not pending'));
+    const root = playersView(api, config, ana);
+    await settle();
+    items(root)[0]?.querySelector<HTMLButtonElement>('button')?.click();
+    await settle();
+    expect(root.querySelector('.message.error')?.textContent).toBe('manipulation is not pending');
+    expect(items(root)[0]?.querySelector<HTMLButtonElement>('button')?.disabled).toBe(false);
+
+    const empty = playersView(fakeApi({ players: [ana] }).api, config, ana);
+    await settle();
+    expect(items(empty).map((li) => li.textContent)).toEqual(['Nenhuma manipulação pendente.']);
+  });
+});
+
 describe('playersView', () => {
   function fill(root: HTMLElement, name: string, email: string): void {
     const field = (n: string): HTMLInputElement => {

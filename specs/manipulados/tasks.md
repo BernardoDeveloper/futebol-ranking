@@ -42,7 +42,7 @@ AbacatePay needs a CNPJ in production; adr:0003-take-manipulation-pix-on-a-perso
 - [x] 5.5 (Unit) Show the static Pix panel awaiting the admin on the ranking — R1.1, R1.2, R1.3, R1.9
   _Depends 5.3, 5.4_
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_
-- [ ] 5.6 (Unit) List pending manipulations with confirm and reject in the Jogadores tab — R1.10
+- [x] 5.6 (Unit) List pending manipulations with confirm and reject in the Jogadores tab — R1.10
   _Depends 5.4_
   _Reason AbacatePay needs a CNPJ; replaced by a static Pix confirmed by an admin_
 - [ ] 5.7 (Unit) Remove the Edge Functions and AbacatePay, and update the stack, glossary, README and CI variables — R1.1
