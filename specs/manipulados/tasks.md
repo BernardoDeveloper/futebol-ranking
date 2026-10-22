@@ -23,4 +23,4 @@
 
 ## 4 · Docs
 
-- [ ] 4.1 (Unit) Record AbacatePay and Edge Functions in the stack, the new terms in the glossary, and the deploy steps in the README — R1.4, R1.7
+- [x] 4.1 (Unit) Record AbacatePay and Edge Functions in the stack, the new terms in the glossary, and the deploy steps in the README — R1.4, R1.7

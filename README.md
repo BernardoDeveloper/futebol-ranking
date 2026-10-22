@@ -11,6 +11,10 @@ salva nota no nome de outro nem vê as notas individuais dos outros — só as m
 
 - Site estático no GitHub Pages; backend é o Supabase (plano grátis).
 - Spec: [`specs/ranking-jogadores/`](specs/ranking-jogadores/) · decisão: [`docs/adr/0001-use-supabase-for-auth-and-data.md`](docs/adr/0001-use-supabase-for-auth-and-data.md)
+- **Manipulados**, só pela resenha: na sua linha do ranking, **Manipular** gera um Pix de
+  R$ 2,00 pela AbacatePay; pago, você sobe 3 pontos na aba **Manipulados** (uma vez só).
+  O ranking oficial e o Copiar não mudam. Spec: [`specs/manipulados/`](specs/manipulados/)
+  · decisão: [`docs/adr/0002-take-pix-payments-through-abacatepay-edge-functions.md`](docs/adr/0002-take-pix-payments-through-abacatepay-edge-functions.md)
 
 ## Colocando no ar
 
@@ -56,6 +60,39 @@ salva nota no nome de outro nem vê as notas individuais dos outros — só as m
    - `VITE_ALLOWED_EMAIL_DOMAIN` — ex.: `suaempresa.com.br` (opcional; com ele o jogador
      digita só `bernardo.gsilva`)
 4. Cada push na `main` roda testes e lint, gera o site e publica.
+
+### 3. Manipulados (AbacatePay)
+
+As Edge Functions não são publicadas pelo CI: faça isso uma vez, e de novo quando
+`supabase/functions/` mudar.
+
+1. **SQL Editor** → cole e rode [`supabase/migrations/0002_manipulations.sql`](supabase/migrations/0002_manipulations.sql).
+2. Na [AbacatePay](https://abacatepay.com), com o **Dev Mode** ligado, crie uma chave de
+   API com permissão para criar e consultar cobranças do Checkout Transparente.
+3. Com a [Supabase CLI](https://supabase.com/docs/guides/cli):
+   ```bash
+   supabase login
+   supabase link --project-ref SEU-PROJECT-REF
+   supabase secrets set ABACATEPAY_API_KEY=sua-chave ABACATEPAY_WEBHOOK_SECRET=$(openssl rand -hex 32)
+   supabase functions deploy manipular
+   supabase functions deploy abacatepay-webhook --no-verify-jwt
+   ```
+   Guarde o `ABACATEPAY_WEBHOOK_SECRET` gerado (`supabase secrets list` mostra só o hash).
+   O `--no-verify-jwt` é obrigatório no webhook: a AbacatePay não manda JWT do Supabase,
+   quem protege a função é o secret.
+4. Na AbacatePay, crie um webhook com o evento `transparent.completed`, a URL
+   `https://SEU-PROJECT-REF.supabase.co/functions/v1/abacatepay-webhook` e, como
+   *secret*, o mesmo valor de `ABACATEPAY_WEBHOOK_SECRET`. A AbacatePay acrescenta
+   `?webhookSecret=...` em cada entrega; se nos logs da função aparecer `401`, inclua
+   `?webhookSecret=SEU_SECRET` na própria URL do webhook.
+5. Teste: clique em **Manipular**, depois simule o pagamento no painel da AbacatePay (ou
+   `POST /v2/transparents/simulate-payment`). Em segundos a linha mostra *Manipulado*.
+6. **Dinheiro de verdade**: desligue o Dev Mode, crie a chave e o webhook de produção e
+   rode de novo o `supabase secrets set ABACATEPAY_API_KEY=...`. O valor cai na conta
+   AbacatePay dona da chave, menos a taxa dela.
+
+Um pagamento só conta quando a API da AbacatePay, consultada com a chave, diz `PAID`; o
+webhook só avisa que é hora de consultar.
 
 ## Desenvolvimento
 

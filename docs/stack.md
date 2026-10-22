@@ -7,6 +7,8 @@ decision, never something adopted silently.
 
 - **@supabase/supabase-js** — client for Supabase email-OTP auth and Postgres, the whole backend (adr:0001-use-supabase-for-auth-and-data).
 - **GitHub Pages** — free static hosting; the build output is plain files.
+- **Supabase Edge Functions** (Deno) — the only server code: they hold the AbacatePay API key the browser must never see (adr:0002-take-pix-payments-through-abacatepay-edge-functions).
+- **AbacatePay** — Pix charges for the Manipulados joke list, with a Dev Mode for simulated payments (adr:0002-take-pix-payments-through-abacatepay-edge-functions).
 
 ## Development
 
